@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
-Ham Radio Dashboard Server
-Serves the dashboard HTML and fetches DX spots via telnet cluster connection.
+Ham Radio Dashboard Server - with Storm Alert Monitor
 Save to: C:\Ham Scripts\dashboard_server.py
+
+IMPORTANT: After sharing your token, regenerate it at:
+  tempestwx.com -> Settings -> Data Authorizations
+  Then update TEMPEST_TOKEN below with the new value.
 """
 
 import http.server
@@ -10,154 +13,191 @@ import urllib.request
 import json
 import os
 import re
-import socket
+import threading
 import time
 from datetime import datetime, timezone
 
-PORT     = 8073
+PORT       = 8073
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CALLSIGN = "N4MI"
 
-# US-based telnet cluster nodes, tried in order
-CLUSTER_NODES = [
-    {"host": "dxc.wa9pie.net", "port": 8000},
-    {"host": "k0xm.net",       "port": 7300},
-    {"host": "w3lpl.net",      "port": 7373},
-]
+# ── Storm Alert Configuration ─────────────────────────────
+TEMPEST_TOKEN      = "eb01897a-3f84-4988-9642-6a2e40b208de"
+TEMPEST_STATION_ID = "159572"
+NWS_ZONE           = "GAC073"   # Columbia County GA
+CALLSIGN           = "N4MI"
 
-def freq_to_band(freq_khz):
-    try:
-        f = float(str(freq_khz).replace(",",""))
-    except:
-        return None
-    if 3500  <= f < 4000:  return "80m"
-    if 7000  <= f < 7300:  return "40m"
-    if 14000 <= f < 14350: return "20m"
-    if 18068 <= f < 18168: return "17m"
-    if 21000 <= f < 21450: return "15m"
-    if 24890 <= f < 24990: return "12m"
-    if 28000 <= f < 29700: return "10m"
-    if 50000 <= f < 54000: return "6m"
-    return None
+# Alert poll intervals
+NWS_POLL_SECONDS      = 120   # Check NWS every 2 minutes
+TEMPEST_POLL_SECONDS  = 60    # Check Tempest every 1 minute
 
-TARGET_BANDS = {"80m","40m","20m","17m","15m","12m","10m","6m"}
+# Lightning thresholds
+LIGHTNING_WARNING_KM  = 40    # Orange alert if lightning within 40km
+LIGHTNING_CAUTION_KM  = 80    # Yellow caution if lightning within 80km
+LIGHTNING_RECENT_MINS = 30    # Consider lightning "recent" if within 30 minutes
 
-# Regex to parse standard DX cluster spot line:
-# DX de W4ABC:     14195.0  PY2XB        599                        1423Z
-SPOT_RE = re.compile(
-    r"DX de\s+([\w\d/\-]+)[\s:]+(\d+\.?\d*)\s+([\w\d/\-]+)\s*(.*?)\s+(\d{4})Z",
-    re.IGNORECASE
-)
+# Alert state shared across threads
+alert_state = {
+    "level":          "NONE",      # NONE, CAUTION, WARNING, CRITICAL
+    "nws_alerts":     [],
+    "lightning_km":   None,
+    "lightning_ago":  None,
+    "lightning_1hr":  0,
+    "conditions":     "Unknown",
+    "wind_gust":      None,
+    "last_updated":   None,
+    "error":          None,
+}
+alert_lock = threading.Lock()
 
-def fetch_spots_telnet():
-    for node in CLUSTER_NODES:
+# ── Tempest API polling ───────────────────────────────────
+def fetch_tempest():
+    url = (f"https://swd.weatherflow.com/swd/rest/better_forecast"
+           f"?station_id={TEMPEST_STATION_ID}&token={TEMPEST_TOKEN}")
+    req = urllib.request.Request(url, headers={"User-Agent": "N4MI-Dashboard/1.0"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+def fetch_nws_alerts():
+    url = f"https://api.weather.gov/alerts/active?zone={NWS_ZONE}"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "N4MI-Dashboard/1.0 N4MI operator",
+        "Accept": "application/json"
+    })
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+def alert_monitor_loop():
+    """Background thread - polls Tempest and NWS, updates alert_state."""
+    print("[STORM MONITOR] Starting alert monitor thread...")
+    while True:
         try:
-            print(f"  Connecting to {node['host']}:{node['port']}...")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(10)
-            sock.connect((node["host"], node["port"]))
+            now_utc = datetime.now(timezone.utc)
 
-            # Read initial banner and send callsign to log in
-            time.sleep(1)
-            banner = b""
+            # ── Fetch Tempest current conditions ─────────────
             try:
-                while True:
-                    chunk = sock.recv(1024)
-                    if not chunk: break
-                    banner += chunk
-                    if b"call" in banner.lower() or b"login" in banner.lower() or b">" in banner:
-                        break
-            except socket.timeout:
-                pass
+                tdata = fetch_tempest()
+                cc = tdata.get("current_conditions", {})
 
-            # Log in with callsign
-            sock.sendall((CALLSIGN + "\r\n").encode())
-            time.sleep(1)
+                lightning_km   = cc.get("lightning_strike_last_distance")  # km
+                lightning_epoch = cc.get("lightning_strike_last_epoch")     # unix timestamp
+                lightning_1hr  = cc.get("lightning_strike_count_last_1hr", 0) or 0
+                wind_gust      = cc.get("wind_gust")                        # m/s
+                conditions     = cc.get("conditions", "Unknown")
 
-            # Request last 30 spots
-            sock.sendall(b"sh/dx 30\r\n")
-            time.sleep(2)
+                lightning_ago_min = None
+                if lightning_epoch:
+                    ago = (now_utc.timestamp() - lightning_epoch) / 60
+                    lightning_ago_min = round(ago, 1)
 
-            # Read response
-            data = b""
-            sock.settimeout(5)
+            except Exception as e:
+                print(f"[STORM MONITOR] Tempest error: {e}")
+                lightning_km = lightning_ago_min = lightning_1hr = wind_gust = None
+                conditions = "Error"
+
+            # ── Fetch NWS alerts ─────────────────────────────
             try:
-                while True:
-                    chunk = sock.recv(4096)
-                    if not chunk: break
-                    data += chunk
-            except socket.timeout:
-                pass
+                nws_data = fetch_nws_alerts()
+                features = nws_data.get("features", [])
+                nws_alerts = []
+                for f in features:
+                    props = f.get("properties", {})
+                    event    = props.get("event", "")
+                    severity = props.get("severity", "")
+                    headline = props.get("headline", "")
+                    nws_alerts.append({
+                        "event":    event,
+                        "severity": severity,
+                        "headline": headline[:120],
+                    })
+            except Exception as e:
+                print(f"[STORM MONITOR] NWS error: {e}")
+                nws_alerts = []
 
-            sock.close()
+            # ── Determine alert level ─────────────────────────
+            level = "NONE"
 
-            raw = data.decode("utf-8", errors="replace")
-            spots = []
+            # NWS critical alerts
+            critical_events = [
+                "Tornado Warning", "Tornado Emergency",
+                "Severe Thunderstorm Warning", "Flash Flood Emergency"
+            ]
+            warning_events = [
+                "Severe Thunderstorm Watch", "Tornado Watch",
+                "Flash Flood Warning", "Flash Flood Watch"
+            ]
+            caution_events = [
+                "Thunderstorm", "Special Weather Statement",
+                "Dense Fog Advisory", "Wind Advisory"
+            ]
 
-            for line in raw.splitlines():
-                m = SPOT_RE.search(line)
-                if m:
-                    de, freq, dx, comment, t = m.groups()
-                    band = freq_to_band(freq)
-                    if band in TARGET_BANDS:
-                        spots.append({
-                            "band":    band,
-                            "dx":      dx.strip(),
-                            "freq":    freq.strip(),
-                            "de":      de.strip(),
-                            "comment": comment.strip()[:40],
-                            "time":    t.strip() + "Z"
-                        })
+            for alert in nws_alerts:
+                ev = alert["event"]
+                if any(c in ev for c in critical_events):
+                    level = "CRITICAL"
+                    break
+                elif any(w in ev for w in warning_events) and level != "CRITICAL":
+                    level = "WARNING"
+                elif any(c in ev for c in caution_events) and level not in ("CRITICAL","WARNING"):
+                    level = "CAUTION"
 
-            if spots:
-                print(f"  Got {len(spots)} spots from {node['host']}")
-                return {"source": node["host"], "spots": spots, "error": None}
-            else:
-                print(f"  No spots parsed from {node['host']}, trying next...")
+            # Lightning-based alerts (if no NWS critical alert already)
+            if level != "CRITICAL":
+                if (lightning_km is not None and lightning_ago_min is not None
+                        and lightning_ago_min <= LIGHTNING_RECENT_MINS):
+                    if lightning_km <= LIGHTNING_WARNING_KM:
+                        if level != "WARNING":
+                            level = "WARNING"
+                    elif lightning_km <= LIGHTNING_CAUTION_KM:
+                        if level == "NONE":
+                            level = "CAUTION"
+
+            # High wind gust caution (>15 m/s = ~35mph)
+            if wind_gust and wind_gust >= 15 and level == "NONE":
+                level = "CAUTION"
+
+            # ── Update shared state ───────────────────────────
+            with alert_lock:
+                alert_state["level"]         = level
+                alert_state["nws_alerts"]    = nws_alerts
+                alert_state["lightning_km"]  = lightning_km
+                alert_state["lightning_ago"] = lightning_ago_min
+                alert_state["lightning_1hr"] = lightning_1hr
+                alert_state["conditions"]    = conditions
+                alert_state["wind_gust"]     = round(wind_gust * 2.237, 1) if wind_gust else None  # m/s to mph
+                alert_state["last_updated"]  = now_utc.strftime("%H:%M UTC")
+                alert_state["error"]         = None
+
+            print(f"[STORM MONITOR] Level={level} | Lightning={lightning_km}km/{lightning_ago_min}min ago"
+                  f" | NWS alerts={len(nws_alerts)} | Wind gust={wind_gust}")
 
         except Exception as e:
-            print(f"  {node['host']} failed: {e}")
-            continue
+            print(f"[STORM MONITOR] Unexpected error: {e}")
+            with alert_lock:
+                alert_state["error"] = str(e)
 
-    return {"source": None, "spots": [], "error": "All cluster nodes failed"}
+        time.sleep(min(NWS_POLL_SECONDS, TEMPEST_POLL_SECONDS))
 
 
+# ── HTTP request handler ──────────────────────────────────
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=SCRIPT_DIR, **kwargs)
 
     def do_GET(self):
-        if self.path == "/api/spots":
+
+        # Storm alert status endpoint
+        if self.path == "/api/storm":
+            with alert_lock:
+                state_copy = dict(alert_state)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            print(f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')} UTC] Fetching DX spots via telnet...")
-            result = fetch_spots_telnet()
-            self.wfile.write(json.dumps(result).encode())
+            self.wfile.write(json.dumps(state_copy).encode())
             return
 
-        if self.path == "/api/solar":
-            try:
-                req = urllib.request.Request(
-                    "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
-                    headers={"User-Agent": "N4MI-Dashboard/1.0"}
-                )
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    data = resp.read()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(data)
-            except Exception as e:
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
-            return
-
-        # HamQSL XML proxy - fetches rich solar/band condition data server-side
+        # HamQSL solar XML proxy
         if self.path == "/api/hamqsl":
             try:
                 req = urllib.request.Request(
@@ -167,49 +207,37 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     xml_data = resp.read().decode("utf-8", errors="replace")
 
-                # Parse key fields from XML
-                import re as _re
                 def get_xml(tag, txt):
-                    m = _re.search(r"<" + tag + r"[^>]*>(.*?)</" + tag + r">", txt, _re.DOTALL)
+                    m = re.search(r"<" + tag + r"[^>]*>(.*?)</" + tag + r">", txt, re.DOTALL)
                     return m.group(1).strip() if m else ""
 
                 result = {
-                    "solarflux":    get_xml("solarflux", xml_data),
-                    "aindex":       get_xml("aindex", xml_data),
-                    "kindex":       get_xml("kindex", xml_data),
-                    "sunspots":     get_xml("sunspots", xml_data),
-                    "xray":         get_xml("xray", xml_data),
-                    "protonflux":   get_xml("protonflux", xml_data),
-                    "electonflux":  get_xml("electonflux", xml_data),
-                    "aurora":       get_xml("aurora", xml_data),
-                    "solarwind":    get_xml("solarwind", xml_data),
-                    "magneticfield":get_xml("magneticfield", xml_data),
-                    "geomagfield":  get_xml("geomagfield", xml_data),
-                    "signalnoise":  get_xml("signalnoise", xml_data),
-                    "fof2":         get_xml("fof2", xml_data),
-                    "mufday":       get_xml("mufday", xml_data),
-                    # Band conditions
-                    "80m-40m":      get_xml("80m-40m", xml_data),
-                    "30m-20m":      get_xml("30m-20m", xml_data),
-                    "17m-15m":      get_xml("17m-15m", xml_data),
-                    "12m-10m":      get_xml("12m-10m", xml_data),
-                    "updated":      get_xml("updated", xml_data),
-                    "source":       "hamqsl"
+                    "solarflux":     get_xml("solarflux",    xml_data),
+                    "aindex":        get_xml("aindex",       xml_data),
+                    "kindex":        get_xml("kindex",       xml_data),
+                    "sunspots":      get_xml("sunspots",     xml_data),
+                    "xray":          get_xml("xray",         xml_data),
+                    "protonflux":    get_xml("protonflux",   xml_data),
+                    "aurora":        get_xml("aurora",       xml_data),
+                    "solarwind":     get_xml("solarwind",    xml_data),
+                    "magneticfield": get_xml("magneticfield",xml_data),
+                    "geomagfield":   get_xml("geomagfield",  xml_data),
+                    "signalnoise":   get_xml("signalnoise",  xml_data),
+                    "updated":       get_xml("updated",      xml_data),
+                    "source":        "hamqsl"
                 }
-
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(json.dumps(result).encode())
-                print(f"  HamQSL data fetched OK (SFI:{result['solarflux']} K:{result['kindex']})")
             except Exception as e:
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
-                print(f"  HamQSL fetch error: {e}")
             return
 
+        # Serve static files
         super().do_GET()
 
     def log_message(self, format, *args):
@@ -217,16 +245,26 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')} UTC] {args[0]}")
 
 
+# ── Main ──────────────────────────────────────────────────
 if __name__ == "__main__":
     os.chdir(SCRIPT_DIR)
-    print(f"")
+
+    # Start alert monitor in background thread
+    monitor_thread = threading.Thread(target=alert_monitor_loop, daemon=True)
+    monitor_thread.start()
+
+    print()
     print(f"  N4MI Ham Radio Dashboard Server")
-    print(f"  Callsign:  {CALLSIGN}")
-    print(f"  Dashboard: http://localhost:{PORT}/N4MI_PropagationDashboard.html")
-    print(f"  Spots API: http://localhost:{PORT}/api/spots")
-    print(f"")
+    print(f"  Storm Monitor: ACTIVE (Tempest station {TEMPEST_STATION_ID})")
+    print(f"  NWS Zone:      {NWS_ZONE} (Columbia County GA)")
+    print(f"  Dashboard:     http://localhost:{PORT}/N4MI_PropagationDashboard.html")
+    print(f"  Storm API:     http://localhost:{PORT}/api/storm")
+    print()
+    print(f"  REMINDER: Regenerate your Tempest token after this session!")
+    print(f"  tempestwx.com -> Settings -> Data Authorizations")
+    print()
     print(f"  Press Ctrl+C to stop.")
-    print(f"")
+    print()
 
     with http.server.ThreadingHTTPServer(("", PORT), DashboardHandler) as httpd:
         try:

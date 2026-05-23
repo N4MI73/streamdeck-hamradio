@@ -210,9 +210,49 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
     pointer-events:none; opacity:0.4;
   }
+
+  /* ── Storm Alert Banner ── */
+  .storm-banner { display:none; position:sticky; top:0; z-index:200; }
+  .storm-banner.visible { display:block; }
+  .storm-inner { display:flex; align-items:center; gap:16px; padding:12px 24px; flex-wrap:wrap; }
+  .storm-banner.CAUTION  .storm-inner { background:#3d2e00; border-bottom:3px solid #ffd700; }
+  .storm-banner.WARNING  .storm-inner { background:#3d1400; border-bottom:3px solid #ff6b00; }
+  .storm-banner.CRITICAL .storm-inner { background:#2d0000; border-bottom:3px solid #ff0000; animation:flash-red 0.8s infinite; }
+  @keyframes flash-red { 0%,100%{background:#2d0000} 50%{background:#5a0000} }
+  .storm-icon { font-size:26px; flex-shrink:0; }
+  .storm-text { flex:1; }
+  .storm-title { font-family:'Orbitron',monospace; font-size:13px; font-weight:700; letter-spacing:2px; margin-bottom:4px; }
+  .storm-banner.CAUTION  .storm-title { color:#ffd700; }
+  .storm-banner.WARNING  .storm-title { color:#ff8c00; }
+  .storm-banner.CRITICAL .storm-title { color:#ff4444; text-shadow:0 0 10px rgba(255,68,68,0.8); }
+  .storm-detail { font-family:'Share Tech Mono',monospace; font-size:11px; color:rgba(255,255,255,0.85); line-height:1.6; }
+  .storm-dismiss { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+    padding:6px 14px; background:transparent; cursor:pointer; flex-shrink:0; transition:all 0.2s; border-radius:2px; }
+  .storm-banner.CAUTION  .storm-dismiss { border:1px solid #ffd700; color:#ffd700; }
+  .storm-banner.WARNING  .storm-dismiss { border:1px solid #ff8c00; color:#ff8c00; }
+  .storm-banner.CRITICAL .storm-dismiss { border:1px solid #ff4444; color:#ff4444; }
+  .storm-dismiss:hover { background:rgba(255,255,255,0.1); }
+  .storm-status-pill { font-family:'Share Tech Mono',monospace; font-size:10px;
+    padding:3px 10px; border-radius:2px; letter-spacing:1px; display:inline-block; margin-top:4px; }
+  .storm-status-NONE     { color:var(--good); border:1px solid var(--good); background:rgba(57,255,20,0.08); }
+  .storm-status-CAUTION  { color:#ffd700;     border:1px solid #ffd700;     background:rgba(255,215,0,0.12); }
+  .storm-status-WARNING  { color:#ff8c00;     border:1px solid #ff8c00;     background:rgba(255,140,0,0.12); }
+  .storm-status-CRITICAL { color:#ff4444;     border:1px solid #ff4444;     background:rgba(255,68,68,0.15); animation:flash-red 0.8s infinite; }
 </style>
 </head>
 <body>
+
+<!-- Storm Alert Banner -->
+<div class="storm-banner" id="stormBanner">
+  <div class="storm-inner">
+    <div class="storm-icon" id="stormIcon">!</div>
+    <div class="storm-text">
+      <div class="storm-title" id="stormTitle">STORM ALERT</div>
+      <div class="storm-detail" id="stormDetail">Checking weather data...</div>
+    </div>
+    <button class="storm-dismiss" onclick="dismissStorm()">X DISMISS</button>
+  </div>
+</div>
 
 <header>
   <div>
@@ -274,7 +314,12 @@
     <div class="solar-sub" id="condSub">Loading...</div>
   </div>
   <div class="solar-item">
-    <div class="solar-label">LAST UPDATE</div>
+  <div class="solar-item">
+    <div class="solar-label">STORM STATUS</div>
+    <div id="stormPill" class="storm-status-pill storm-status-NONE">ALL CLEAR</div>
+    <div class="solar-sub" id="stormSub">Tempest + NWS</div>
+  </div>
+      <div class="solar-label">LAST UPDATE</div>
     <div class="solar-value" id="lastUpdate" style="font-size:11px;color:var(--muted);margin-top:4px">--</div>
     <div class="solar-sub">HamQSL / NOAA</div>
   </div>
@@ -605,6 +650,82 @@ function updateBandConditions(sfi, kIdx) {
     grid.appendChild(card);
   });
 }
+
+
+// ── Storm Alert System ──────────────────────────────────
+var stormDismissed = false;
+var lastStormLevel = 'NONE';
+
+function fetchStormStatus() {
+  fetch('/api/storm')
+    .then(function(res) {
+      if (!res.ok) throw new Error('Storm API not available');
+      return res.json();
+    })
+    .then(function(data) {
+      var level  = data.level || 'NONE';
+      var banner = document.getElementById('stormBanner');
+      var pill   = document.getElementById('stormPill');
+      var sub    = document.getElementById('stormSub');
+      var icon   = document.getElementById('stormIcon');
+      var title  = document.getElementById('stormTitle');
+      var detail = document.getElementById('stormDetail');
+
+      // Update solar bar pill
+      pill.className   = 'storm-status-pill storm-status-' + level;
+      pill.textContent = (level === 'NONE') ? 'ALL CLEAR' : level;
+      if (data.last_updated) { sub.textContent = 'Updated ' + data.last_updated; }
+
+      // Build detail lines
+      var lines = [];
+      if (data.lightning_km !== null && data.lightning_km !== undefined
+          && data.lightning_ago !== null && data.lightning_ago !== undefined) {
+        var dist  = (data.lightning_km < 1) ? '<1' : Math.round(data.lightning_km);
+        var miles = Math.round(data.lightning_km * 0.621);
+        lines.push('Lightning: ' + dist + ' km (' + miles + ' mi) | '
+          + Math.round(data.lightning_ago) + ' min ago | '
+          + (data.lightning_1hr || 0) + ' strikes/hr');
+      }
+      if (data.wind_gust) { lines.push('Wind gust: ' + data.wind_gust + ' mph'); }
+      if (data.nws_alerts && data.nws_alerts.length > 0) {
+        data.nws_alerts.forEach(function(a) {
+          lines.push('NWS: ' + a.event + (a.headline ? ' - ' + a.headline : ''));
+        });
+      }
+      if (data.conditions) { lines.push('Conditions: ' + data.conditions); }
+
+      // Un-dismiss if level escalates
+      if (level !== 'NONE' && level !== lastStormLevel) { stormDismissed = false; }
+      lastStormLevel = level;
+
+      // Show or hide banner
+      if (level !== 'NONE' && !stormDismissed) {
+        var icons  = { CAUTION:'(!)', WARNING:'(!!)', CRITICAL:'[!!!]' };
+        var titles = {
+          CAUTION:  'WEATHER CAUTION -- MONITOR CONDITIONS',
+          WARNING:  'STORM WARNING -- CONSIDER LOWERING TOWER',
+          CRITICAL: 'SEVERE STORM WARNING -- LOWER TOWER NOW!'
+        };
+        banner.className  = 'storm-banner visible ' + level;
+        icon.textContent  = icons[level]  || '(!)';
+        title.textContent = titles[level] || 'STORM ALERT';
+        detail.innerHTML  = lines.join('<br>');
+      } else if (level === 'NONE') {
+        banner.className = 'storm-banner';
+      }
+    })
+    .catch(function(e) {
+      console.log('Storm API:', e.message);
+    });
+}
+
+function dismissStorm() {
+  stormDismissed = true;
+  document.getElementById('stormBanner').className = 'storm-banner';
+}
+
+setInterval(fetchStormStatus, 60000);
+fetchStormStatus();
 
 function refreshAll() {
   fetchSolarData();
