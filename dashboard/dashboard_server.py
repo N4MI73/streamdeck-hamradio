@@ -21,8 +21,8 @@ PORT       = 8073
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── Storm Alert Configuration ─────────────────────────────
-TEMPEST_TOKEN      = "eb01897a-3f84-4988-9642-6a2e40b208de"
-TEMPEST_STATION_ID = "159572"
+TEMPEST_TOKEN      = "YOUR_TEMPEST_TOKEN_HERE"
+TEMPEST_STATION_ID = "YOUR_STATION_ID"
 NWS_ZONE           = "GAC073"   # Columbia County GA
 CALLSIGN           = "N4MI"
 
