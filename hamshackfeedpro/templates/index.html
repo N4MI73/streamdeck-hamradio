@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HamShackFeed Pro — Ham Radio Content Aggregator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Share+Tech+Mono&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #080c14;
+  --bg2:       #0d1320;
+  --bg3:       #121926;
+  --border:    #1e2a3a;
+  --border2:   #2a3a50;
+  --text:      #c8d8e8;
+  --text-dim:  #607080;
+  --text-muted:#3a4a5a;
+  --accent:    #00b4d8;
+  --accent2:   #0077b6;
+  --gold:      #d4a843;
+  --green:     #39ff14;
+  --red:       #ff4560;
+  --blog:      #00b4d8;
+  --podcast:   #d4a843;
+  --youtube:   #ff4560;
+  --card-r:    8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Lora',serif; font-size:15px; min-height:100vh; }
+body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); }
+header { position:sticky; top:0; z-index:100; background:rgba(8,12,20,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:0 24px; }
+.header-inner { max-width:1400px; margin:0 auto; display:flex; align-items:center; gap:16px; height:56px; }
+.logo { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:var(--accent); letter-spacing:-0.5px; flex-shrink:0; }
+.logo span { color:var(--text-dim); font-weight:400; font-size:13px; margin-left:8px; }
+.logo sup { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--gold); letter-spacing:1px; vertical-align:super; margin-left:4px; }
+.search-wrap { flex:1; max-width:480px; position:relative; }
+.search-wrap input { width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:8px 12px 8px 36px; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:13px; outline:none; transition:border-color 0.2s; }
+.search-wrap input:focus { border-color:var(--accent); }
+.search-wrap input::placeholder { color:var(--text-muted); }
+.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-dim); font-size:14px; pointer-events:none; }
+.filters { display:flex; gap:4px; flex-shrink:0; }
+.filter-btn { font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:1px; padding:5px 12px; background:transparent; border:1px solid var(--border); border-radius:4px; color:var(--text-dim); cursor:pointer; transition:all 0.2s; text-transform:uppercase; }
+.filter-btn:hover { border-color:var(--border2); color:var(--text); }
+.filter-btn.active { background:var(--accent); border-color:var(--accent); color:#000; }
+.filter-btn.blog.active { background:var(--blog); border-color:var(--blog); color:#000; }
+.filter-btn.podcast.active { background:var(--podcast); border-color:var(--podcast); color:#000; }
+.filter-btn.youtube.active { background:var(--youtube); border-color:var(--youtube); color:#fff; }
+.header-actions { display:flex; gap:8px; margin-left:auto; flex-shrink:0; align-items:center; }
+.btn { font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:1px; padding:6px 14px; border-radius:4px; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--text-dim); transition:all 0.2s; text-transform:uppercase; }
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:#000; font-weight:600; }
+.btn.primary:hover { background:#00d4ff; border-color:#00d4ff; }
+.refresh-status { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-muted); white-space:nowrap; }
+.refresh-status.active { color:var(--accent); }
+.layout { max-width:1400px; margin:0 auto; display:grid; grid-template-columns:240px 1fr; gap:0; min-height:calc(100vh - 56px); position:relative; z-index:1; }
+.sidebar { border-right:1px solid var(--border); padding:20px 0; position:sticky; top:56px; height:calc(100vh - 56px); overflow-y:auto; }
+.sidebar::-webkit-scrollbar { width:4px; }
+.sidebar::-webkit-scrollbar-track { background:transparent; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.sidebar-section { padding:0 16px 16px; border-bottom:1px solid var(--border); margin-bottom:16px; }
+.sidebar-title { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; padding:0 4px; }
+.source-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:4px; cursor:pointer; transition:background 0.15s; position:relative; }
+.source-item:hover { background:var(--bg3); }
+.source-item.selected { background:var(--bg3); }
+.source-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.source-name { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.source-count { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--accent); background:rgba(0,180,216,0.1); padding:1px 6px; border-radius:8px; flex-shrink:0; }
+.source-star { background:none; border:none; font-size:13px; cursor:pointer; padding:0 2px; color:var(--text-dim); opacity:0; transition:color 0.15s,opacity 0.15s; flex-shrink:0; }
+.source-item:hover .source-star { opacity:1; }
+.source-star.starred { color:var(--gold); opacity:1; }
+.source-star:hover { color:var(--gold); }
+.source-remove { opacity:0; background:none; border:none; color:var(--red); cursor:pointer; font-size:14px; padding:0 2px; transition:opacity 0.15s; flex-shrink:0; }
+.source-item:hover .source-remove { opacity:1; }
+.unread-toggle { display:flex; align-items:center; gap:8px; padding:6px 8px; font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-dim); }
+.toggle-switch { width:32px; height:18px; background:var(--border2); border-radius:9px; cursor:pointer; position:relative; transition:background 0.2s; flex-shrink:0; border:none; }
+.toggle-switch.on { background:var(--accent); }
+.toggle-switch::after { content:''; position:absolute; width:12px; height:12px; background:#fff; border-radius:50%; top:3px; left:3px; transition:transform 0.2s; }
+.toggle-switch.on::after { transform:translateX(14px); }
+.favorites-panel { background:var(--bg2); border-bottom:1px solid var(--border); padding:16px 24px; position:relative; z-index:1; }
+.favorites-title { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.favorites-title::before { content:''; display:inline-block; width:16px; height:1px; background:var(--gold); }
+.favorites-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; max-width:1352px; }
+.fav-card { background:var(--bg3); border:1px solid var(--border2); border-radius:6px; padding:10px 12px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:border-color 0.2s; position:relative; overflow:hidden; }
+.fav-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+.fav-card.blog::before { background:var(--blog); }
+.fav-card.podcast::before { background:var(--podcast); }
+.fav-card.youtube::before { background:var(--youtube); }
+.fav-card:hover { background:var(--bg2); }
+.fav-thumb { width:44px; height:44px; border-radius:4px; object-fit:cover; flex-shrink:0; background:var(--border); }
+.fav-info { flex:1; overflow:hidden; }
+.fav-source { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
+.fav-title { font-family:'Syne',sans-serif; font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fav-date { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-muted); margin-top:2px; }
+.fav-star { color:var(--gold); font-size:14px; flex-shrink:0; }
+.main { padding:24px; overflow-y:auto; }
+.content-header { display:flex; align-items:center; gap:16px; margin-bottom:20px; }
+.content-title { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase; }
+.content-count { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-muted); }
+.mark-all-btn { margin-left:auto; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; background:none; border:1px solid var(--border); color:var(--text-dim); padding:4px 10px; border-radius:4px; cursor:pointer; transition:all 0.2s; }
+.mark-all-btn:hover { border-color:var(--green); color:var(--green); }
+.feed-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
+.feed-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--card-r); overflow:hidden; transition:border-color 0.2s,transform 0.15s; cursor:pointer; position:relative; }
+.feed-card:hover { border-color:var(--border2); transform:translateY(-1px); }
+.feed-card.read { opacity:0.45; }
+.feed-card.read:hover { opacity:0.7; }
+.card-type-bar { height:3px; width:100%; }
+.card-type-bar.blog { background:var(--blog); }
+.card-type-bar.podcast { background:var(--podcast); }
+.card-type-bar.youtube { background:var(--youtube); }
+.card-body { padding:14px 16px; }
+.card-meta { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.card-source { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text-dim); }
+.card-type-badge { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; padding:2px 6px; border-radius:2px; }
+.card-type-badge.blog { color:var(--blog); background:rgba(0,180,216,0.1); }
+.card-type-badge.podcast { color:var(--podcast); background:rgba(212,168,67,0.1); }
+.card-type-badge.youtube { color:var(--youtube); background:rgba(255,69,96,0.1); }
+.card-date { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-muted); margin-left:auto; }
+.card-title { font-family:'Syne',sans-serif; font-size:14px; font-weight:600; color:var(--text); line-height:1.3; margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.card-desc { font-size:12px; color:var(--text-dim); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.card-thumb { width:100%; height:140px; object-fit:cover; display:block; background:var(--bg3); }
+.card-footer { display:flex; align-items:center; gap:8px; padding:8px 16px; border-top:1px solid var(--border); background:var(--bg); }
+.card-read-btn { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; background:none; border:none; cursor:pointer; color:var(--text-muted); transition:color 0.2s; padding:0; }
+.card-read-btn:hover { color:var(--green); }
+.feed-card.read .card-read-btn { color:var(--green); }
+.card-open-btn { margin-left:auto; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; background:none; border:1px solid var(--border); border-radius:3px; padding:3px 8px; color:var(--text-dim); cursor:pointer; transition:all 0.15s; text-decoration:none; display:inline-block; }
+.card-open-btn:hover { border-color:var(--accent); color:var(--accent); }
+.card-play-btn { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; background:none; border:1px solid var(--gold); border-radius:3px; padding:3px 8px; color:var(--gold); cursor:pointer; transition:all 0.15s; flex-shrink:0; }
+.card-play-btn:hover { background:var(--gold); color:#000; }
+.skeleton { background:var(--bg2); border:1px solid var(--border); border-radius:var(--card-r); overflow:hidden; animation:skeleton-pulse 1.5s ease-in-out infinite; }
+@keyframes skeleton-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.skeleton-bar { height:3px; background:var(--border2); }
+.skeleton-body { padding:14px 16px; }
+.skeleton-line { height:12px; background:var(--border2); border-radius:2px; margin-bottom:8px; }
+.skeleton-line.short { width:40%; }
+.skeleton-line.medium { width:70%; }
+.empty-state { text-align:center; padding:80px 40px; grid-column:1/-1; }
+.empty-state .empty-icon { font-size:48px; margin-bottom:16px; display:block; }
+.empty-state p { font-family:'Share Tech Mono',monospace; font-size:13px; color:var(--text-muted); }
+.player-bar { position:fixed; bottom:0; left:0; right:0; z-index:150; background:rgba(10,16,28,0.97); backdrop-filter:blur(12px); border-top:1px solid var(--border2); padding:10px 24px; display:none; align-items:center; gap:16px; }
+.player-bar.visible { display:flex; }
+.player-info { flex:1; min-width:0; }
+.player-title { font-family:'Syne',sans-serif; font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.player-source { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--gold); margin-top:2px; }
+.player-controls { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.player-btn { background:none; border:none; color:var(--text); font-size:18px; cursor:pointer; padding:4px; transition:color 0.15s; }
+.player-btn:hover { color:var(--gold); }
+.player-btn.play-pause { width:36px; height:36px; border-radius:50%; background:var(--gold); color:#000; font-size:14px; display:flex; align-items:center; justify-content:center; }
+.player-btn.play-pause:hover { background:#f0c050; }
+.player-progress { flex:2; display:flex; align-items:center; gap:8px; min-width:0; }
+.player-time { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text-dim); flex-shrink:0; width:36px; }
+.player-seek { flex:1; height:4px; -webkit-appearance:none; appearance:none; background:var(--border2); border-radius:2px; cursor:pointer; outline:none; }
+.player-seek::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--gold); cursor:pointer; }
+.player-close { font-family:'Share Tech Mono',monospace; font-size:10px; background:none; border:1px solid var(--border); color:var(--text-dim); padding:4px 10px; border-radius:3px; cursor:pointer; flex-shrink:0; transition:all 0.15s; }
+.player-close:hover { border-color:var(--red); color:var(--red); }
+.modal-overlay { display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--bg2); border:1px solid var(--border2); border-radius:10px; padding:28px; width:480px; max-width:90vw; }
+.modal-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:6px; }
+.modal-sub { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-muted); margin-bottom:20px; }
+.modal label { font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text-dim); display:block; margin-bottom:6px; }
+.modal input,.modal select { width:100%; background:var(--bg3); border:1px solid var(--border2); border-radius:4px; padding:10px 12px; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:13px; outline:none; margin-bottom:16px; transition:border-color 0.2s; }
+.modal input:focus,.modal select:focus { border-color:var(--accent); }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+.modal-status { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--accent); margin-top:8px; min-height:18px; }
+.toast { position:fixed; bottom:24px; right:24px; z-index:300; background:var(--bg3); border:1px solid var(--border2); border-radius:6px; padding:12px 18px; font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--text); transform:translateY(80px); opacity:0; transition:all 0.3s; pointer-events:none; }
+.toast.show { transform:translateY(0); opacity:1; }
+[data-tip] { position:relative; }
+[data-tip]::after { content:attr(data-tip); position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); background:var(--bg3); border:1px solid var(--border2); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:10px; white-space:nowrap; padding:5px 10px; border-radius:4px; pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:999; }
+[data-tip]:hover::after { opacity:1; }
+.help-overlay { display:none; position:fixed; inset:0; z-index:300; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); align-items:flex-start; justify-content:center; padding:40px 20px; overflow-y:auto; }
+.help-overlay.open { display:flex; }
+.help-modal { background:var(--bg2); border:1px solid var(--border2); border-radius:12px; width:680px; max-width:100%; padding:32px; position:relative; }
+.help-close { position:absolute; top:16px; right:16px; background:none; border:1px solid var(--border); color:var(--text-dim); font-size:14px; width:30px; height:30px; border-radius:4px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
+.help-close:hover { border-color:var(--red); color:var(--red); }
+.help-title { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--accent); margin-bottom:4px; }
+.help-subtitle { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:28px; }
+.help-section { margin-bottom:24px; padding-bottom:24px; border-bottom:1px solid var(--border); }
+.help-section:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+.help-section-title { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.help-section-title span { font-size:16px; }
+.help-body { font-family:'Lora',serif; font-size:13px; color:var(--text-dim); line-height:1.7; }
+.help-body p { margin-bottom:8px; }
+.help-tip { background:var(--bg3); border-left:3px solid var(--accent); padding:8px 12px; border-radius:0 4px 4px 0; margin:8px 0; font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text); line-height:1.6; }
+.help-tip.gold { border-left-color:var(--gold); }
+.help-tip.red { border-left-color:var(--red); }
+.help-badge { display:inline-block; font-family:'Share Tech Mono',monospace; font-size:10px; padding:2px 7px; border-radius:3px; margin:0 2px; vertical-align:middle; }
+.help-badge.blog { color:var(--blog); background:rgba(0,180,216,0.15); }
+.help-badge.podcast { color:var(--podcast); background:rgba(212,168,67,0.15); }
+.help-badge.youtube { color:var(--youtube); background:rgba(255,69,96,0.15); }
+.help-badge.grey { color:var(--text-dim); background:var(--bg3); }
+@media (max-width:768px) { .layout{grid-template-columns:1fr} .sidebar{display:none} .feed-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">HAMSHACK<span>FEED</span><sup>PRO</sup></div>
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="searchInput" placeholder="Search feed or web..." autocomplete="off">
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all"     onclick="setFilter('all',this)"     data-tip="Show all content">All</button>
+      <button class="filter-btn blog"   data-filter="blog"    onclick="setFilter('blog',this)"    data-tip="Blog articles only">Blog</button>
+      <button class="filter-btn podcast" data-filter="podcast" onclick="setFilter('podcast',this)" data-tip="Podcast episodes only">Podcast</button>
+      <button class="filter-btn youtube" data-filter="youtube" onclick="setFilter('youtube',this)" data-tip="YouTube videos only">Video</button>
+    </div>
+    <div class="header-actions">
+      <span class="refresh-status" id="refreshStatus"></span>
+      <button class="btn" onclick="triggerRefresh()" data-tip="Reload all feeds">↺ Refresh</button>
+      <button class="btn" onclick="openHelpModal()" data-tip="Help & tips">? Help</button>
+      <button class="btn primary" onclick="openAddModal()" data-tip="Add a blog, podcast or YouTube channel">+ Add Source</button>
+    </div>
+  </div>
+</header>
+
+<div class="favorites-panel" id="favoritesPanel" style="display:none">
+  <div class="favorites-title">Favorites</div>
+  <div class="favorites-grid" id="favoritesGrid"></div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Display</div>
+      <div class="unread-toggle">
+        <button class="toggle-switch" id="unreadToggle" onclick="toggleUnread()" data-tip="Show only unread items"></button>
+        <span id="unreadLabel">Show all</span>
+      </div>
+    </div>
+    <div class="sidebar-section" id="sourceList">
+      <div class="sidebar-title">Sources</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="content-header">
+      <div class="content-title" id="contentTitle">All Sources</div>
+      <div class="content-count" id="contentCount"></div>
+      <button class="mark-all-btn" onclick="markAllRead()" data-tip="Mark all visible items as read">Mark all read</button>
+    </div>
+    <div class="feed-grid" id="feedGrid"></div>
+    <div id="webSearchSection" style="display:none">
+      <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border)">
+        <div style="font-family:'Syne',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;">◈ Web Search — DuckDuckGo</div>
+        <div class="feed-grid" id="webResultsGrid"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add Source Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-title">Add Content Source</div>
+    <div class="modal-sub">Paste any URL — blog, podcast, or YouTube channel</div>
+    <label>URL</label>
+    <input type="url" id="addUrl" placeholder="https://www.example.com" />
+    <label>Label (optional)</label>
+    <input type="text" id="addLabel" placeholder="Auto-detected if left blank" />
+    <label>Type</label>
+    <select id="addType">
+      <option value="auto">Auto-detect</option>
+      <option value="blog">Blog / News</option>
+      <option value="podcast">Podcast</option>
+      <option value="youtube">YouTube Channel</option>
+    </select>
+    <div class="modal-status" id="addStatus"></div>
+    <div class="help-tip red" style="margin-top:10px;font-size:11px;">
+      <b>YouTube:</b> Use the channel URL format (youtube.com/channel/UCxxxxx), not a handle (@name). Find it on the channel's About page.
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAddModal()">Cancel</button>
+      <button class="btn primary" onclick="addSource()">Add Source</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="help-overlay" id="helpModal" onclick="closeHelpOnOverlay(event)">
+  <div class="help-modal">
+    <button class="help-close" onclick="closeHelpModal()">✕</button>
+    <div class="help-title">HamShackFeed Pro</div>
+    <div class="help-subtitle">Server-Powered Ham Radio Content Aggregator</div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>🖥️</span> About Pro</div>
+      <div class="help-body">
+        <p>HamShackFeed Pro is a locally-hosted server version of HamShackFeed. Unlike the standalone HTML file, Pro stores everything in a SQLite database on your PC — sources, items, and read state are preserved across browser clears and accessible from any device on your network.</p>
+        <div class="help-tip gold"><b>No API key required.</b> Pro fetches RSS feeds directly on the server — no rss2json.com proxy needed.</div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>📰</span> Reading the Feed</div>
+      <div class="help-body">
+        <p>Content is sorted newest-first across all sources. Each card shows the source, type, date, title, and description. Click <span class="help-badge grey">Open</span> to read in a new tab.</p>
+        <div class="help-tip">Color codes: <span class="help-badge blog">Blog</span> cyan &nbsp; <span class="help-badge podcast">Podcast</span> gold &nbsp; <span class="help-badge youtube">YouTube</span> red</div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>✓</span> Read Tracking</div>
+      <div class="help-body">
+        <p>Click <span class="help-badge grey">● Mark read</span> on any card. Read state is stored on the server — it persists across devices and survives browser data clears.</p>
+        <div class="help-tip gold">Toggle <b>Unread only</b> in the sidebar to focus on fresh content.</div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>★</span> Favorites</div>
+      <div class="help-body">
+        <p>Hover over a source in the sidebar and click the ★ to favorite it (up to 5). Favorited sources show their latest item in the panel at the top for quick access.</p>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>🎙️</span> Podcast Player</div>
+      <div class="help-body">
+        <p>Podcast cards with audio links show a <span class="help-badge podcast">▶ Play</span> button. Click to open the persistent player bar at the bottom with full controls — play/pause, skip ±15s/30s, seek bar.</p>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>+</span> Adding Sources</div>
+      <div class="help-body">
+        <p>Click <b>+ Add Source</b> and paste a URL. The server auto-detects the feed and fetches items immediately.</p>
+        <div class="help-tip">
+          <b>Blog:</b> Paste the site URL — /feed is tried automatically<br>
+          <b>Podcast:</b> Paste the RSS feed URL directly<br>
+          <b>YouTube:</b> Use youtube.com/channel/UCxxxxxxx format (not @handles)
+        </div>
+        <div class="help-tip red">Apple Podcasts links cannot be used. Find the show's own website for its RSS feed URL.</div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>↺</span> Refresh</div>
+      <div class="help-body">
+        <p>Feeds refresh automatically every 30 minutes in the background. Click <b>↺ Refresh</b> to force an immediate update of all sources. The status indicator in the header shows refresh progress and last update time.</p>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>⚡</span> Troubleshooting</div>
+      <div class="help-body">
+        <div class="help-tip red"><b>Feed not loading:</b> Check the source URL is a valid RSS feed. Try removing and re-adding with /feed or /rss appended.</div>
+        <div class="help-tip red"><b>No items after adding:</b> The server fetches in the background — wait a few seconds and refresh the page.</div>
+        <div class="help-tip red"><b>YouTube not loading:</b> Use the full channel URL format, not a @handle. Find it on the channel's About page.</div>
+        <div class="help-tip"><b>Server not reachable from another device:</b> Check Windows Firewall allows port 8074, and use your PC's local IP address (e.g. 192.168.1.x:8074).</div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-section-title"><span>📡</span> About</div>
+      <div class="help-body">
+        <p>Built by <b>Dan Marshall, N4MI</b> (EM83) with assistance from Claude AI.<br>
+        Part of the Stream Deck for Ham Radio project at <b>github.com/N4MI73/streamdeck-hamradio</b></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Podcast player bar -->
+<div class="player-bar" id="playerBar">
+  <div class="player-info">
+    <div class="player-title" id="playerTitle">—</div>
+    <div class="player-source" id="playerSource"></div>
+  </div>
+  <div class="player-controls">
+    <button class="player-btn" onclick="playerSkip(-15)" title="Back 15s">⏮ 15s</button>
+    <button class="player-btn play-pause" id="playPauseBtn" onclick="playerToggle()">▶</button>
+    <button class="player-btn" onclick="playerSkip(30)" title="Forward 30s">30s ⏭</button>
+  </div>
+  <div class="player-progress">
+    <span class="player-time" id="playerCurrent">0:00</span>
+    <input type="range" class="player-seek" id="playerSeek" value="0" min="0" max="100" step="0.1" oninput="playerSeek(this.value)">
+    <span class="player-time" id="playerDuration">0:00</span>
+  </div>
+  <button class="player-close" onclick="playerClose()">✕ Close</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<audio id="audioEl" onended="playerEnded()" ontimeupdate="playerTimeUpdate()" onloadedmetadata="playerMetaLoaded()"></audio>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+let sources       = [];
+let allItems      = [];
+let activeFilter  = 'all';
+let activeSource  = null;
+let unreadOnly    = false;
+let searchQuery   = '';
+let statusPollTimer = null;
+
+const dots = { blog:'#00b4d8', podcast:'#d4a843', youtube:'#ff4560' };
+
+// ── Init ──────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  showSkeletons();
+  loadAll();
+  startStatusPoll();
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    renderFeed();
+    if (searchQuery.length >= 4) webSearch(searchQuery);
+    else {
+      document.getElementById('webSearchSection').style.display = 'none';
+    }
+  });
+
+  document.getElementById('addUrl').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addSource();
+  });
+});
+
+async function loadAll() {
+  await Promise.all([loadSources(), loadItems()]);
+  renderSourceList();
+  renderFeed();
+  renderFavorites();
+}
+
+async function loadSources() {
+  try {
+    const r = await fetch('/api/sources');
+    sources = await r.json();
+  } catch(e) { console.error('loadSources:', e); }
+}
+
+async function loadItems() {
+  try {
+    const r = await fetch('/api/items?limit=200');
+    allItems = await r.json();
+  } catch(e) { console.error('loadItems:', e); }
+}
+
+// ── Status polling ────────────────────────────────────────
+function startStatusPoll() {
+  pollStatus();
+  statusPollTimer = setInterval(pollStatus, 10000);
+}
+
+async function pollStatus() {
+  try {
+    const r    = await fetch('/api/status');
+    const data = await r.json();
+    const el   = document.getElementById('refreshStatus');
+    if (data.refreshing) {
+      el.textContent = '↺ refreshing…';
+      el.className   = 'refresh-status active';
+      // Reload items when refresh completes on next poll
+      el._wasRefreshing = true;
+    } else {
+      if (el._wasRefreshing) {
+        el._wasRefreshing = false;
+        await loadAll();
+        renderSourceList();
+        renderFeed();
+        renderFavorites();
+        showToast('Feed refreshed');
+      }
+      if (data.last_refresh) {
+        const ago = timeAgo(data.last_refresh);
+        el.textContent = `Updated ${ago}`;
+      }
+      el.className = 'refresh-status';
+    }
+  } catch(e) {}
+}
+
+// ── Render: source list ───────────────────────────────────
+function renderSourceList() {
+  const container = document.getElementById('sourceList');
+  const types     = ['blog', 'podcast', 'youtube'];
+  const labels    = { blog:'Blogs', podcast:'Podcasts', youtube:'Video' };
+
+  let html = '<div class="sidebar-title">Sources</div>';
+
+  // "All" row
+  html += `<div class="source-item ${activeSource===null?'selected':''}" onclick="selectSource(null)">
+    <span class="source-dot" style="background:var(--accent)"></span>
+    <span class="source-name">All Sources</span>
+  </div>`;
+
+  types.forEach(type => {
+    const group = sources.filter(s => s.type === type);
+    if (!group.length) return;
+    html += `<div class="sidebar-title" style="margin-top:12px">${labels[type]}</div>`;
+    group.forEach(src => {
+      const unread = src.unread_count || 0;
+      html += `<div class="source-item ${activeSource===src.id?'selected':''}" onclick="selectSource(${src.id})">
+        <span class="source-dot" style="background:${dots[src.type]}${src.last_error?';opacity:0.3':''}"></span>
+        <span class="source-name" title="${escHtml(src.name)}">${escHtml(src.name)}</span>
+        ${unread > 0 ? `<span class="source-count">${unread}</span>` : ''}
+        <button class="source-star ${src.is_favorite?'starred':''}" onclick="toggleFav(event,${src.id})" title="${src.is_favorite?'Remove favorite':'Add to favorites'}">★</button>
+        <button class="source-remove" onclick="removeSource(event,${src.id})" title="Remove source">✕</button>
+      </div>`;
+    });
+  });
+
+  container.innerHTML = html;
+}
+
+// ── Render: feed cards ────────────────────────────────────
+function renderFeed() {
+  let items = [...allItems];
+
+  if (activeSource !== null) items = items.filter(i => i.source_id === activeSource);
+  if (activeFilter !== 'all') items = items.filter(i => i.source_type === activeFilter);
+  if (unreadOnly)             items = items.filter(i => !i.is_read);
+  if (searchQuery)            items = items.filter(i =>
+    (i.title||'').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (i.description||'').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (i.source_name||'').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const grid  = document.getElementById('feedGrid');
+  const title = document.getElementById('contentTitle');
+  const count = document.getElementById('contentCount');
+
+  title.textContent = activeSource
+    ? (sources.find(s=>s.id===activeSource)||{}).name || 'Source'
+    : activeFilter === 'all' ? 'All Sources' : activeFilter.charAt(0).toUpperCase()+activeFilter.slice(1);
+  count.textContent = `${items.length} item${items.length!==1?'s':''}`;
+
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <span class="empty-icon">📻</span>
+      <p>${allItems.length ? 'No items match your filters.' : 'Fetching feeds… check back in a moment.'}</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = items.map(item => cardHTML(item)).join('');
+}
+
+function cardHTML(item) {
+  const dateStr  = item.pub_date ? relDate(item.pub_date) : '';
+  const hasThumb = !!item.thumbnail;
+  const hasAudio = !!item.audio_url;
+
+  return `<div class="feed-card ${item.is_read?'read':''}" data-guid="${escHtml(item.guid)}">
+    <div class="card-type-bar ${item.source_type}"></div>
+    ${hasThumb ? `<img class="card-thumb" src="${escHtml(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+    <div class="card-body">
+      <div class="card-meta">
+        <span class="card-source">${escHtml(item.source_name)}</span>
+        <span class="card-type-badge ${item.source_type}">${item.source_type}</span>
+        <span class="card-date">${dateStr}</span>
+      </div>
+      <div class="card-title">${escHtml(item.title||'Untitled')}</div>
+      ${item.description ? `<div class="card-desc">${escHtml(item.description)}</div>` : ''}
+    </div>
+    <div class="card-footer">
+      <button class="card-read-btn" onclick="toggleRead(event,'${escHtml(item.guid)}')">
+        ${item.is_read ? '✓ Read' : '● Mark read'}
+      </button>
+      ${hasAudio ? `<button class="card-play-btn" onclick="playerPlay(event,'${escHtml(item.audio_url)}','${escHtml(item.title)}','${escHtml(item.source_name)}')">▶ Play</button>` : ''}
+      <a class="card-open-btn" href="${escHtml(item.url)}" target="_blank" rel="noopener" onclick="markRead('${escHtml(item.guid)}')">Open →</a>
+    </div>
+  </div>`;
+}
+
+// ── Render: favorites ─────────────────────────────────────
+function renderFavorites() {
+  const panel  = document.getElementById('favoritesPanel');
+  const grid   = document.getElementById('favoritesGrid');
+  const favSrcs = sources.filter(s => s.is_favorite);
+
+  if (!favSrcs.length) { panel.style.display='none'; return; }
+  panel.style.display = 'block';
+
+  const html = favSrcs.map(src => {
+    const item = allItems.find(i => i.source_id === src.id);
+    if (!item) return '';
+    return `<div class="fav-card ${src.type}" onclick="window.open('${escHtml(item.url)}','_blank')">
+      ${item.thumbnail ? `<img class="fav-thumb" src="${escHtml(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+      <div class="fav-info">
+        <div class="fav-source">${escHtml(src.name)}</div>
+        <div class="fav-title">${escHtml(item.title||'')}</div>
+        <div class="fav-date">${item.pub_date ? relDate(item.pub_date) : ''}</div>
+      </div>
+      <span class="fav-star">★</span>
+    </div>`;
+  }).join('');
+
+  grid.innerHTML = html || '<div style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--text-muted)">No items loaded yet for favorited sources.</div>';
+}
+
+// ── Skeletons ─────────────────────────────────────────────
+function showSkeletons() {
+  const grid = document.getElementById('feedGrid');
+  grid.innerHTML = Array(6).fill(`<div class="skeleton">
+    <div class="skeleton-bar"></div>
+    <div class="skeleton-body">
+      <div class="skeleton-line short"></div>
+      <div class="skeleton-line medium"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line short"></div>
+    </div>
+  </div>`).join('');
+}
+
+// ── Actions ───────────────────────────────────────────────
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeed();
+}
+
+function selectSource(id) {
+  activeSource = id;
+  renderSourceList();
+  renderFeed();
+}
+
+function toggleUnread() {
+  unreadOnly = !unreadOnly;
+  const tog = document.getElementById('unreadToggle');
+  const lbl = document.getElementById('unreadLabel');
+  tog.classList.toggle('on', unreadOnly);
+  lbl.textContent = unreadOnly ? 'Unread only' : 'Show all';
+  renderFeed();
+}
+
+async function markRead(guid) {
+  const item = allItems.find(i => i.guid === guid);
+  if (item) item.is_read = 1;
+  await fetch('/api/read', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({guids:[guid]}) });
+}
+
+async function toggleRead(e, guid) {
+  e.stopPropagation();
+  const item = allItems.find(i => i.guid === guid);
+  if (!item) return;
+  item.is_read = item.is_read ? 0 : 1;
+  renderFeed();
+  renderSourceList();
+  if (item.is_read) {
+    await fetch('/api/read', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({guids:[guid]}) });
+  } else {
+    await fetch('/api/read', { method:'DELETE', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({guids:[guid]}) });
+  }
+}
+
+async function markAllRead() {
+  allItems.forEach(i => i.is_read = 1);
+  renderFeed();
+  renderSourceList();
+  await fetch('/api/read/all', { method:'POST' });
+  showToast('All items marked as read');
+}
+
+async function toggleFav(e, id) {
+  e.stopPropagation();
+  const src = sources.find(s => s.id === id);
+  if (!src) return;
+  const adding    = !src.is_favorite;
+  const favCount  = sources.filter(s => s.is_favorite).length;
+  if (adding && favCount >= 5) { showToast('Maximum 5 favorites'); return; }
+  src.is_favorite = adding ? 1 : 0;
+  renderSourceList();
+  renderFavorites();
+  await fetch(`/api/sources/${id}/favorite`, { method: adding ? 'POST' : 'DELETE' });
+}
+
+async function removeSource(e, id) {
+  e.stopPropagation();
+  const src = sources.find(s => s.id === id);
+  if (!src) return;
+  if (!confirm(`Remove "${src.name}" from your sources?`)) return;
+  sources  = sources.filter(s => s.id !== id);
+  allItems = allItems.filter(i => i.source_id !== id);
+  if (activeSource === id) activeSource = null;
+  renderSourceList();
+  renderFeed();
+  renderFavorites();
+  await fetch(`/api/sources/${id}`, { method:'DELETE' });
+  showToast(`"${src.name}" removed`);
+}
+
+async function triggerRefresh() {
+  const el = document.getElementById('refreshStatus');
+  el.textContent = '↺ refreshing…';
+  el.className   = 'refresh-status active';
+  el._wasRefreshing = true;
+  await fetch('/api/refresh', { method:'POST' });
+}
+
+// ── Add Source ────────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('addModal').classList.add('open');
+  document.getElementById('addUrl').focus();
+}
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('open');
+  document.getElementById('addUrl').value = '';
+  document.getElementById('addLabel').value = '';
+  document.getElementById('addType').value = 'auto';
+  document.getElementById('addStatus').textContent = '';
+  document.getElementById('addStatus').style.color = 'var(--accent)';
+}
+
+async function addSource() {
+  const url    = document.getElementById('addUrl').value.trim();
+  const name   = document.getElementById('addLabel').value.trim();
+  const type   = document.getElementById('addType').value;
+  const status = document.getElementById('addStatus');
+
+  if (!url) { status.style.color='var(--red)'; status.textContent='Please enter a URL'; return; }
+  status.style.color = 'var(--accent)';
+  status.textContent = 'Detecting feed…';
+
+  try {
+    const r    = await fetch('/api/sources', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url, name, type})
+    });
+    const data = await r.json();
+
+    if (!r.ok) {
+      status.style.color  = 'var(--red)';
+      status.textContent  = data.error || 'Could not add source';
+      return;
+    }
+
+    sources.push({ ...data, item_count:0, unread_count:0 });
+    renderSourceList();
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Added "${data.name}" — fetching items…`;
+
+    // Poll for new items
+    setTimeout(async () => {
+      await loadItems();
+      renderFeed();
+      renderFavorites();
+      renderSourceList();
+    }, 3000);
+
+    setTimeout(closeAddModal, 2000);
+    showToast(`"${data.name}" added`);
+
+  } catch(e) {
+    status.style.color = 'var(--red)';
+    status.textContent = 'Server error — is the server running?';
+  }
+}
+
+// ── Help Modal ────────────────────────────────────────────
+function openHelpModal() { document.getElementById('helpModal').classList.add('open'); }
+function closeHelpModal() { document.getElementById('helpModal').classList.remove('open'); }
+function closeHelpOnOverlay(e) { if (e.target === document.getElementById('helpModal')) closeHelpModal(); }
+
+// ── Podcast Player ────────────────────────────────────────
+const audio = document.getElementById('audioEl');
+
+function playerPlay(e, url, title, source) {
+  e.stopPropagation();
+  document.getElementById('playerTitle').textContent  = title;
+  document.getElementById('playerSource').textContent = source;
+  document.getElementById('playerBar').classList.add('visible');
+  audio.src = url;
+  audio.play();
+  document.getElementById('playPauseBtn').textContent = '⏸';
+}
+function playerToggle() {
+  if (audio.paused) { audio.play(); document.getElementById('playPauseBtn').textContent='⏸'; }
+  else              { audio.pause(); document.getElementById('playPauseBtn').textContent='▶'; }
+}
+function playerSkip(s) { audio.currentTime = Math.max(0, audio.currentTime + s); }
+function playerClose() {
+  audio.pause(); audio.src='';
+  document.getElementById('playerBar').classList.remove('visible');
+}
+function playerEnded() { document.getElementById('playPauseBtn').textContent='▶'; }
+function playerTimeUpdate() {
+  if (!audio.duration) return;
+  document.getElementById('playerCurrent').textContent = fmtTime(audio.currentTime);
+  document.getElementById('playerSeek').value = (audio.currentTime / audio.duration) * 100;
+}
+function playerMetaLoaded() {
+  document.getElementById('playerDuration').textContent = fmtTime(audio.duration);
+}
+function playerSeek(val) { if (audio.duration) audio.currentTime = (val/100)*audio.duration; }
+
+// ── Web Search ────────────────────────────────────────────
+let searchTimer = null;
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (q.length >= 4) searchTimer = setTimeout(() => webSearch(q), 600);
+  else document.getElementById('webSearchSection').style.display='none';
+});
+
+async function webSearch(q) {
+  const section = document.getElementById('webSearchSection');
+  const grid    = document.getElementById('webResultsGrid');
+  section.style.display = 'block';
+  grid.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--text-muted)">Searching…</div>';
+  try {
+    const url  = `https://api.duckduckgo.com/?q=${encodeURIComponent(q+' ham radio')}&format=json&no_html=1&skip_disambig=1&no_redirect=1`;
+    const r    = await fetch(url);
+    const data = await r.json();
+    const results = [];
+    (data.RelatedTopics||[]).forEach(t => {
+      if (t.Text && t.FirstURL) results.push({title:t.Text, url:t.FirstURL});
+      (t.Topics||[]).forEach(sub => { if (sub.Text && sub.FirstURL) results.push({title:sub.Text, url:sub.FirstURL}); });
+    });
+    if (!results.length) { grid.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--text-muted)">No results.</div>'; return; }
+    grid.innerHTML = results.slice(0,6).map(r => `
+      <div class="feed-card" onclick="window.open('${escHtml(r.url)}','_blank')">
+        <div class="card-type-bar blog"></div>
+        <div class="card-body">
+          <div class="card-meta"><span class="card-source">Web</span><span class="card-type-badge blog">Search</span></div>
+          <div class="card-title">${escHtml(r.title.slice(0,120))}</div>
+        </div>
+        <div class="card-footer"><a class="card-open-btn" href="${escHtml(r.url)}" target="_blank" rel="noopener">Open →</a></div>
+      </div>`).join('');
+  } catch(e) { grid.innerHTML=''; }
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function relDate(iso) {
+  if (!iso) return '';
+  const d   = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60)           return 'Just now';
+  if (diff < 3600)         return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400)        return `${Math.floor(diff/3600)}h ago`;
+  if (diff < 86400*7)      return `${Math.floor(diff/86400)}d ago`;
+  return d.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+}
+
+function timeAgo(iso) {
+  const d   = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60)   return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  return `${Math.floor(diff/3600)}h ago`;
+}
+
+function fmtTime(s) {
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
