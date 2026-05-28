@@ -883,6 +883,10 @@ header {
 
     <div class="modal-status" id="addStatus"></div>
 
+    <div class="help-tip red" style="margin-top:10px;font-size:11px;">
+      <b>Note:</b> Adding sources requires a free <a href="https://rss2json.com" target="_blank" style="color:inherit;">rss2json.com</a> API key set in the source code. Without one, requests are rate-limited and adds will fail.
+    </div>
+
     <div class="modal-actions">
       <button class="btn" onclick="closeAddModal()">Cancel</button>
       <button class="btn primary" onclick="addSource()">Add Source</button>
@@ -964,6 +968,7 @@ header {
         </div>
         <p>The dashboard tests the feed before adding it. If it fails, try adding <b>/feed</b> or <b>/rss</b> to the end of the URL manually.</p>
         <div class="help-tip red">Apple Podcasts links cannot be used directly. Find the show&apos;s own website for its RSS feed URL.</div>
+        <div class="help-tip red"><b>API key required to add sources:</b> HamShackFeed uses rss2json.com to fetch RSS feeds. Without a free API key set in the source code, the rate limit is 1 request per 10 seconds and all adds will fail. Get a free key at <a href="https://rss2json.com" target="_blank" style="color:inherit;">rss2json.com</a> and set <b>RSS2JSON_KEY</b> near the top of the &lt;script&gt; block.</div>
       </div>
     </div>
 
@@ -990,7 +995,8 @@ header {
     <div class="help-section">
       <div class="help-section-title"><span>&#9889;</span> Troubleshooting</div>
       <div class="help-body">
-        <div class="help-tip red"><b>Feed not loading:</b> The rss2json.com proxy may be temporarily unavailable. Try clicking Refresh. If it persists, the proxy free tier may have hit its rate limit &mdash; wait a few minutes and try again.</div>
+        <div class="help-tip red"><b>Feed not loading:</b> The rss2json.com proxy may be temporarily unavailable. Try clicking Refresh. If it persists, the proxy free tier may have hit its daily limit &mdash; wait a few minutes and try again.</div>
+        <div class="help-tip red"><b>Add Source fails every time:</b> A free rss2json.com API key must be set in the source code (<b>RSS2JSON_KEY</b>). Without one, requests are throttled to 1 per 10 seconds and will consistently fail. Get a free key at <a href="https://rss2json.com" target="_blank" style="color:inherit;">rss2json.com</a>.</div>
         <div class="help-tip red"><b>No thumbnails on YouTube cards:</b> Try refreshing. Thumbnails are fetched directly from YouTube CDN and should load reliably.</div>
         <div class="help-tip red"><b>No Play button on a podcast:</b> That episode&apos;s RSS entry does not include a direct audio link. Use Open to visit the podcast page instead.</div>
         <div class="help-tip red"><b>Added source shows no items:</b> The feed URL may be incorrect. Remove it and try again with /feed or /rss appended to the URL.</div>
@@ -1015,6 +1021,10 @@ header {
 
 <script>
 // ── Constants ────────────────────────────────────────────
+// rss2json.com API key — free tier at https://rss2json.com
+// Without a key, requests are heavily rate-limited (1 req/10 sec).
+// Sign up for a free key and replace the value below.
+const RSS2JSON_KEY = 'u8ek4zaqygaq9omwvw4axvmyeqiiypogmj5b1ktx';
 const RSS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url=';
 const YT_RSS    = 'https://www.youtube.com/feeds/videos.xml?channel_id=';
 const STORAGE_SOURCES = 'n4mi_sources_v2';
@@ -1287,7 +1297,7 @@ async function fetchAllFeeds() {
 
 async function fetchFeed(source) {
   try {
-    const proxyUrl = RSS_PROXY + encodeURIComponent(source.url) + '&count=10&api_key=';
+    const proxyUrl = RSS_PROXY + encodeURIComponent(source.url) + '&count=10&api_key=' + RSS2JSON_KEY;
     const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -1671,17 +1681,22 @@ async function addSource() {
     status.style.color = 'var(--gold)';
     return;
   }
-  // Blog — try /feed
+  // Blog — use URL directly if it's already a feed, otherwise append /feed
   else {
     if (detectedType === 'auto') detectedType = 'blog';
-    const base = urlVal.replace(/\/+$/, '');
-    feedUrl = base + '/feed';
+    const lowerUrl = urlVal.toLowerCase();
+    const alreadyFeed =
+      /\.(rss|xml|atom)(\?|$)/.test(lowerUrl) ||  // ends in .rss / .xml / .atom
+      lowerUrl.includes('feedburner.com')       ||  // FeedBurner URLs are already feeds
+      /\/feed\/?(\?|$)/.test(lowerUrl)          ||  // path ends in /feed or /feed/
+      /[?&]feed=/.test(lowerUrl);                   // has ?feed= or &feed= query param
+    feedUrl = alreadyFeed ? urlVal : urlVal.replace(/\/+$/, '') + '/feed';
   }
 
   // Test the feed
   status.textContent = 'Testing feed...';
   try {
-    const testUrl = RSS_PROXY + encodeURIComponent(feedUrl) + '&count=3';
+    const testUrl = RSS_PROXY + encodeURIComponent(feedUrl) + '&count=3&api_key=' + RSS2JSON_KEY;
     const res = await fetch(testUrl);
     const data = await res.json();
 
