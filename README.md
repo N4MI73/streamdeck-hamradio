@@ -1,6 +1,6 @@
 # Stream Deck for Ham Radio — N4MI
 
-A complete Stream Deck integration for amateur radio operators running Windows, built with PowerShell scripts and a locally-hosted propagation dashboard. One press launches your complete software stack for any operating mode, controls your antenna rotator, or opens your personalized operating portal.
+A complete Stream Deck integration for amateur radio operators running Windows, built with PowerShell scripts, a locally-hosted propagation dashboard, and a server-powered ham radio content aggregator. One press launches your complete software stack for any operating mode, controls your antenna rotator, or opens your personalized operating portal.
 
 Developed by **Dan Marshall, N4MI** (Grovetown, GA — EM83)
 with assistance from [Claude AI](https://claude.ai/).
@@ -18,6 +18,7 @@ with assistance from [Claude AI](https://claude.ai/).
 - **Rotator control** — sends azimuth commands directly to PSTRotatorAz via UDP; compass direction buttons plus preset DX region headings
 - **Web launcher** — opens your ham radio browser tabs (QRZ, LoTW, Clublog, PSKReporter, DX Cluster) in a dedicated Chrome profile
 - **HamShackFeed** — single-file ham radio content aggregator; pulls blogs, podcasts, and YouTube channels into one searchable dashboard with favorites, read tracking, and a built-in podcast player
+- **HamShackFeed Pro** — server-powered version of HamShackFeed with SQLite persistence, direct RSS fetching (no API key needed), background refresh, and cross-device access
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 ---
@@ -34,9 +35,9 @@ with assistance from [Claude AI](https://claude.ai/).
 
 - [Stream Deck software](https://www.elgato.com/us/en/s/downloads) (Elgato)
 - [Advanced Launcher plugin](https://barraider.com/) by BarRaider (from Stream Deck Plugin Store)
-- [Python 3.13](https://www.python.org/downloads/) (for dashboard server)
+- [Python 3.13](https://www.python.org/downloads/) (for dashboard server and HamShackFeed Pro)
   * ⚠️ Check **"Add Python to PATH"** during installation
-- PowerShell 5.1 (built into Windows) or [PowerShell 7](https://github.com/PowerShell/PowerShell) (optional upgrade)
+- PowerShell 7 ([download](https://github.com/PowerShell/PowerShell)) — required for HamShackFeed Pro launcher
 
 ### Ham Radio Software (paths configured in scripts)
 
@@ -53,57 +54,31 @@ with assistance from [Claude AI](https://claude.ai/).
 ```
 streamdeck-hamradio/
 ├── README.md
+├── .gitignore
 ├── scripts/
-│   ├── HamRadioLauncher.ps1       # FT8, CW, SSB mode launchers
-│   ├── HamRadioChrome.ps1         # Ham radio website launcher
-│   ├── CloseHamRadio.ps1          # Clean shutdown script
-│   ├── StartDashboard.ps1         # Dashboard server launcher
-│   ├── RotatorAzimuth.ps1         # Antenna direction control
-│   └── RotatorStop.ps1            # Stop rotation immediately
+│   ├── HamRadioLauncher.ps1            # FT8, CW, SSB mode launchers
+│   ├── HamRadioChrome.ps1              # Ham radio website launcher
+│   ├── CloseHamRadio.ps1               # Clean shutdown script
+│   ├── StartDashboard.ps1              # Dashboard server launcher
+│   ├── RotatorAzimuth.ps1              # Antenna direction control
+│   └── RotatorStop.ps1                 # Stop rotation immediately
 ├── dashboard/
-│   ├── dashboard_server.py        # Local Python web server + DX cluster proxy
+│   ├── dashboard_server.py             # Local Python web server + DX cluster proxy
 │   ├── N4MI_PropagationDashboard.html  # Propagation portal (rename callsign as needed)
-│   └── HamShackFeed.html          # Ham radio content aggregator (see setup below)
+│   └── HamShackFeed.html               # Ham radio content aggregator (see setup below)
+├── hamshackfeed_pro/
+│   ├── server.py                       # Flask server, API routes, scheduler
+│   ├── fetcher.py                      # Direct RSS parsing (no API key needed)
+│   ├── requirements.txt                # Python dependencies
+│   ├── import_sources.py               # Migrate sources from HamShackFeed HTML version
+│   ├── StartHamShackFeedPro.ps1        # PowerShell launcher
+│   └── templates/
+│       └── index.html                  # Frontend
 └── icons/
     ├── FT8.png
     ├── SSB.png
     ├── CW.png
-    ├── WebSites.png
-    ├── N4MI_Dashboard.png
-    ├── CloseApps.png
-    ├── RotatorControl.png
-    ├── RotatorStop.png
-    ├── RotatorBearing.png
-    ├── RadioProgramming.png
-    ├── RT.png
-    ├── DevManager.png
-    ├── ARCCC_NetControl.png
-    ├── Dir_N.png                  # Compass direction — North (0°)
-    ├── Dir_NE.png                 # Compass direction — Northeast (45°)
-    ├── Dir_E.png                  # Compass direction — East (90°)
-    ├── Dir_SE.png                 # Compass direction — Southeast (135°)
-    ├── Dir_S.png                  # Compass direction — South (180°)
-    ├── Dir_SW.png                 # Compass direction — Southwest (225°)
-    ├── Dir_W.png                  # Compass direction — West (270°)
-    ├── Dir_NW.png                 # Compass direction — Northwest (315°)
-    ├── DX_Europe.png              # DX region — Europe (50°)
-    ├── DX_WestAfrica.png          # DX region — West Africa (80°)
-    ├── DX_Asia.png                # DX region — Asia (342°)
-    ├── DX_SouthAmerica.png        # DX region — South America (145°)
-    ├── DX_Pacific.png             # DX region — Pacific (290°)
-    └── radio-programming/
-        ├── IC-7610.png
-        ├── IC-7300.png
-        ├── IC-9700.png
-        ├── IC-R6.png
-        ├── FTM-6000.png
-        ├── ID-52.png
-        ├── TH-D74.png
-        ├── AT-D878.png
-        ├── DJ-MD5.png
-        ├── KG-935G.png
-        ├── DM-32UV.png
-        └── DR-06.png
+    └── ... (see full list in repo)
 ```
 
 ---
@@ -112,7 +87,7 @@ streamdeck-hamradio/
 
 ### 1. Copy scripts to your PC
 
-Save all files from `scripts/` and `dashboard/` to `C:\Ham Scripts\`
+Save all files maintaining the folder structure to `C:\Ham Scripts\`
 
 ### 2. Edit paths in scripts
 
@@ -130,10 +105,10 @@ $pstrotator = "C:\Program Files (x86)\PstRotatorAz\PstRotatorAz.exe"
 
 For each button, use the **Advanced Launcher** plugin with:
 
-- **Executable:** `powershell.exe`
-- **Arguments:** `-ExecutionPolicy Bypass -File "C:\Ham Scripts\ScriptName.ps1" -mode ft8`
+- **Executable:** `pwsh.exe` (PowerShell 7) or `powershell.exe` (Windows PowerShell 5.1)
+- **Arguments:** `-ExecutionPolicy Bypass -File "C:\Ham Scripts\ScriptName.ps1"`
 
-Example arguments for each mode:
+Example arguments for mode launchers:
 
 ```
 FT8:  -ExecutionPolicy Bypass -File "C:\Ham Scripts\HamRadioLauncher.ps1" -mode ft8
@@ -141,11 +116,19 @@ CW:   -ExecutionPolicy Bypass -File "C:\Ham Scripts\HamRadioLauncher.ps1" -mode 
 SSB:  -ExecutionPolicy Bypass -File "C:\Ham Scripts\HamRadioLauncher.ps1" -mode ssb
 ```
 
+HamShackFeed Pro button:
+
+```
+Executable: pwsh.exe
+Arguments:  -ExecutionPolicy Bypass -Command "cd 'C:\Ham Scripts\hamshackfeed_pro'; python server.py"
+Start In:   C:\Ham Scripts\hamshackfeed_pro
+```
+
 ### 4. Configure PSTRotatorAz for UDP control
 
 In PSTRotatorAz: **Communication → UDP Control → Enable**, port **12000**
 
-### 5. Customize the dashboard
+### 5. Customize the propagation dashboard
 
 Edit `N4MI_PropagationDashboard.html` and update the callsign and grid square to your own. Update the callsign in `dashboard_server.py` as well (`CALLSIGN = "N4MI"`).
 
@@ -153,64 +136,121 @@ Edit `N4MI_PropagationDashboard.html` and update the callsign and grid square to
 
 See the [HamShackFeed Setup](#hamshackfeed-setup) section below.
 
+### 7. Set up HamShackFeed Pro
+
+See the [HamShackFeed Pro Setup](#hamshackfeed-pro-setup) section below.
+
 ---
 
 ## HamShackFeed Setup
 
-HamShackFeed is a single HTML file that aggregates ham radio blogs, podcasts, and YouTube channels into one searchable dashboard. It works by fetching RSS feeds through the [rss2json.com](https://rss2json.com) API proxy.
+HamShackFeed (`dashboard/HamShackFeed.html`) is a single HTML file that aggregates ham radio blogs, podcasts, and YouTube channels. It works by fetching RSS feeds through the [rss2json.com](https://rss2json.com) API proxy.
 
-### Why an API key is required
+### API key required
 
-The file in this repo ships with a placeholder API key (`YOUR_RSS2JSON_API_KEY_HERE`). Without a real key, the proxy is rate-limited to **1 request per 10 seconds** — which means the default sources will load slowly and **adding new sources will consistently fail**.
+The file in this repo ships with a placeholder key (`YOUR_RSS2JSON_API_KEY_HERE`). Without a real key, the proxy is rate-limited to 1 request per 10 seconds — the default sources will load slowly and **adding new sources will fail**.
 
-A free rss2json.com account gives you **10,000 requests per day**, which is more than enough for normal use.
+A free rss2json.com account gives you 10,000 requests per day.
 
-### Getting your free API key
-
-1. Go to [https://rss2json.com](https://rss2json.com)
-2. Click **Sign Up** and create a free account
-3. After logging in, your API key is shown on the dashboard
-4. Copy the key — it looks like: `u8ek4zaqygaq9omwvw4axvmyeqiiypogmj5b1ktx`
-
-### Adding your key to HamShackFeed
-
-Open `HamShackFeed.html` in a text editor and find this line near the top of the `<script>` block (around line 1020):
-
+**To get your free key:**
+1. Go to [https://rss2json.com](https://rss2json.com) and sign up
+2. Copy your API key from the dashboard
+3. Open `HamShackFeed.html` in a text editor and find this line near the top of the `<script>` block:
 ```javascript
 const RSS2JSON_KEY = 'YOUR_RSS2JSON_API_KEY_HERE';
 ```
+4. Replace the placeholder with your key and save
 
-Replace the placeholder with your actual key:
+> **Tip:** Consider using HamShackFeed Pro instead — it fetches feeds directly on the server with no API key needed, stores everything in SQLite, and works across devices.
 
-```javascript
-const RSS2JSON_KEY = 'your_actual_key_here';
+---
+
+## HamShackFeed Pro Setup
+
+HamShackFeed Pro (`hamshackfeed_pro/`) is a locally-hosted server version that solves the limitations of the standalone HTML file:
+
+| Feature | HamShackFeed | HamShackFeed Pro |
+|---|---|---|
+| RSS proxy API key | Required | **Not needed** |
+| Source/read persistence | Browser localStorage | **SQLite database** |
+| Cross-device access | No | **Yes (local network)** |
+| Background refresh | No | **Every 30 minutes** |
+| Port | n/a | **8074** |
+
+### Installation
+
+1. Copy the `hamshackfeed_pro\` folder to `C:\Ham Scripts\`
+
+2. Install Python dependencies (run once):
+```powershell
+cd "C:\Ham Scripts\hamshackfeed_pro"
+pip install -r requirements.txt
 ```
 
-Save the file. That's it — all feed fetching and the **+ Add Source** button will now work correctly.
+3. Start the server:
+```powershell
+cd "C:\Ham Scripts\hamshackfeed_pro"
+python server.py
+```
 
-### Adding sources
+4. Open `http://localhost:8074` in your browser
 
-Open the file in your browser and click **+ Add Source**. Paste any of the following:
+The `hamshackfeed.db` SQLite database is created automatically on first run. Feeds begin loading in the background immediately.
 
-- A blog URL — e.g. `https://www.kb6nu.com` (HamShackFeed tries `/feed` automatically for WordPress sites)
-- A direct RSS/Atom feed URL — e.g. `https://www.arrl.org/arrl.rss`
-- A Podbean or Spreaker podcast URL — feed is constructed automatically
-- A YouTube channel URL — e.g. `https://youtube.com/channel/UCxxxxx` (channel ID format works best)
+### Accessing from other devices
 
-> **Note:** YouTube handle URLs (`@channelname`) cannot be auto-converted to a feed without the YouTube Data API. Use the full channel URL from the channel's **About** page instead.
+HamShackFeed Pro binds to all network interfaces. From any device on your local network, open:
+```
+http://192.168.x.x:8074
+```
+Replace with your ham computer's local IP. Read state and sources are shared across all devices.
+
+> **Windows Firewall:** If other devices can't connect, allow inbound connections on port 8074:
+> ```powershell
+> New-NetFirewallRule -DisplayName "HamShackFeed Pro" -Direction Inbound -Protocol TCP -LocalPort 8074 -Action Allow
+> ```
+
+### Migrating sources from HamShackFeed HTML version
+
+1. Open `HamShackFeed.html` in your browser, press `F12`, open the Console tab, and run:
+```javascript
+const all = JSON.parse(localStorage.getItem('n4mi_sources_v2') || '[]');
+const custom = all.filter(s => String(s.id).startsWith('custom_'));
+copy(JSON.stringify(custom, null, 2));
+console.log(`Copied ${custom.length} custom sources to clipboard`);
+```
+
+2. Paste into a file called `custom_sources.json` in `C:\Ham Scripts\hamshackfeed_pro\`
+
+3. With the Pro server running, execute:
+```powershell
+cd "C:\Ham Scripts\hamshackfeed_pro"
+python import_sources.py
+```
+
+### Adding YouTube channels
+
+Use the full channel URL format — YouTube handle URLs (`@name`) cannot be auto-resolved:
+
+✅ `https://www.youtube.com/channel/UCxxxxxxxxxxxxxxx`  
+❌ `https://www.youtube.com/@channelname`
+
+Find the channel URL on the channel's About page.
 
 ---
 
 ## Script Reference
 
 | Script | Purpose | Key Arguments |
-| --- | --- | --- |
+|---|---|---|
 | `HamRadioLauncher.ps1` | Launches complete app stack for a mode | `-mode ft8` / `-mode cw` / `-mode ssb` |
 | `HamRadioChrome.ps1` | Opens ham radio websites in Chrome | none |
 | `CloseHamRadio.ps1` | Cleanly shuts down all ham radio apps | none |
 | `StartDashboard.ps1` | Starts Python server and opens dashboard | none |
 | `RotatorAzimuth.ps1` | Rotates antenna to any azimuth | `-az 270` (0–360) |
 | `RotatorStop.ps1` | Immediately stops antenna rotation | none |
+| `hamshackfeed_pro/server.py` | Starts HamShackFeed Pro on port 8074 | none |
+| `hamshackfeed_pro/import_sources.py` | Imports sources from HTML version | none |
 
 ---
 
@@ -219,7 +259,7 @@ Open the file in your browser and click **+ Add Source**. Paste any of the follo
 These are approximate great-circle headings. Operators in other grid squares should calculate their own using ACLog, PSTRotatorAz's DXCC lookup, or an online great-circle calculator.
 
 | Region | Azimuth |
-| --- | --- |
+|---|---|
 | Europe | 50° |
 | West Africa | 80° |
 | S. America | 145° |
@@ -237,7 +277,8 @@ These are approximate great-circle headings. Operators in other grid squares sho
 - **Dashboard callsign/grid** — update in both `dashboard_server.py` and `N4MI_PropagationDashboard.html`.
 - **DX region azimuths** — update `-az` arguments in your Stream Deck button configurations.
 - **Launch delays** — adjust `$shortDelay` and `$jtalertDelay` in `HamRadioLauncher.ps1` if apps need more time to load on your PC.
-- **HamShackFeed API key** — set `RSS2JSON_KEY` in `HamShackFeed.html` as described above.
+- **HamShackFeed API key** — set `RSS2JSON_KEY` in `HamShackFeed.html` (or use HamShackFeed Pro instead).
+- **HamShackFeed Pro refresh interval** — change `REFRESH_INTERVAL_MINUTES` near the top of `server.py`.
 
 ---
 
