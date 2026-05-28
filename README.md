@@ -1,6 +1,6 @@
 # Stream Deck for Ham Radio — N4MI
 
-A complete Stream Deck integration for amateur radio operators running Windows, built with PowerShell scripts and a locally-hosted propagation and storm alert dashboard. One press launches your complete software stack for any operating mode, controls your antenna rotator, or opens your personalized operating portal.
+A complete Stream Deck integration for amateur radio operators running Windows, built with PowerShell scripts and a locally-hosted propagation dashboard. One press launches your complete software stack for any operating mode, controls your antenna rotator, or opens your personalized operating portal.
 
 Developed by **Dan Marshall, N4MI** (Grovetown, GA — EM83)
 with assistance from [Claude AI](https://claude.ai/).
@@ -14,10 +14,10 @@ with assistance from [Claude AI](https://claude.ai/).
 - **One-press mode launchers** — FT8/FT4, CW, and SSB each launch their complete app stack in the correct order with the right delays, popup reminders for ACLog configuration, and automatic privilege elevation where needed
 - **Clean shutdown** — closes all apps in correct dependency order with rotator return-to-North reminder
 - **Propagation dashboard** — locally-hosted HTML page with live solar indices, band conditions, DX cluster spots, and propagation maps, launched with one button press
-- **Storm alert system** — integrated real-time weather monitoring via WeatherFlow Tempest and NOAA NWS alerts, with tower safety warnings displayed directly in the dashboard
+- **Storm alert system** — three-level alert banner (CAUTION / WARNING / CRITICAL) using WeatherFlow Tempest lightning data and NOAA NWS alerts; warns when it's time to lower the tower
 - **Rotator control** — sends azimuth commands directly to PSTRotatorAz via UDP; compass direction buttons plus preset DX region headings
 - **Web launcher** — opens your ham radio browser tabs (QRZ, LoTW, Clublog, PSKReporter, DX Cluster) in a dedicated Chrome profile
-- **HamShackFeed** — single-file HTML RSS aggregator for ham radio blogs, podcasts, and YouTube channels
+- **HamShackFeed** — single-file ham radio content aggregator; pulls blogs, podcasts, and YouTube channels into one searchable dashboard with favorites, read tracking, and a built-in podcast player
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 ---
@@ -25,20 +25,21 @@ with assistance from [Claude AI](https://claude.ai/).
 ## Requirements
 
 ### Hardware
+
 - Elgato Stream Deck (any model; 15-key MK.2 or larger recommended)
 - Windows 10/11 PC
 - Yaesu rotator + ERC Mini USB interface (for rotator control features)
-- [WeatherFlow Tempest](https://weatherflow.com/tempest-weather-system/) personal weather station (optional — for storm alert system)
 
 ### Software (all free)
+
 - [Stream Deck software](https://www.elgato.com/us/en/s/downloads) (Elgato)
 - [Advanced Launcher plugin](https://barraider.com/) by BarRaider (from Stream Deck Plugin Store)
 - [Python 3.13](https://www.python.org/downloads/) (for dashboard server)
-  - ⚠️ Check **"Add Python to PATH"** during installation
-- PowerShell 5.1 (built into Windows) or [PowerShell 7](https://github.com/PowerShell/PowerShell/releases/latest) (optional upgrade)
-  - ⚠️ If installing PowerShell 7, use the **MSI installer** from the GitHub releases page — not winget or the Microsoft Store. The Store version installs to a protected directory that Stream Deck cannot access.
+  * ⚠️ Check **"Add Python to PATH"** during installation
+- PowerShell 5.1 (built into Windows) or [PowerShell 7](https://github.com/PowerShell/PowerShell) (optional upgrade)
 
 ### Ham Radio Software (paths configured in scripts)
+
 - [ACLog](https://www.n3fjp.com/aclog.html) — N3FJP Amateur Contact Log
 - [WSJT-X](https://wsjt.sourceforge.io/) — FT8/FT4 digital modes
 - [JTAlert](https://hamapps.com/) — alert overlay for WSJT-X
@@ -57,28 +58,26 @@ streamdeck-hamradio/
 │   ├── HamRadioChrome.ps1         # Ham radio website launcher
 │   ├── CloseHamRadio.ps1          # Clean shutdown script
 │   ├── StartDashboard.ps1         # Dashboard server launcher
-│   ├── stop_dashboard.ps1         # Dashboard server stop (PID file method)
 │   ├── RotatorAzimuth.ps1         # Antenna direction control
 │   └── RotatorStop.ps1            # Stop rotation immediately
 ├── dashboard/
-│   ├── dashboard_server.py        # Local Python web server + DX cluster proxy + storm monitor
+│   ├── dashboard_server.py        # Local Python web server + DX cluster proxy
 │   ├── N4MI_PropagationDashboard.html  # Propagation portal (rename callsign as needed)
-│   └── HamShackFeed.html          # Ham radio RSS content aggregator
+│   └── HamShackFeed.html          # Ham radio content aggregator (see setup below)
 └── icons/
-    ├── FT8.png                    # FT8/FT4 mode launcher
-    ├── SSB.png                    # SSB mode launcher
-    ├── CW.png                     # CW mode launcher
-    ├── WebSites.png               # Ham radio websites
-    ├── N4MI_Dashboard.png         # Operating portal dashboard
-    ├── StopDashboard.png          # Stop dashboard server
-    ├── CloseApps.png              # Close all apps (73)
-    ├── RotatorControl.png         # Rotator control folder
-    ├── RotatorStop.png            # Stop rotation
-    ├── RotatorBearing.png         # Bearing query button
-    ├── RadioProgramming.png       # Radio programming folder
-    ├── RT.png                     # RT Systems launcher
-    ├── DevManager.png             # Device Manager (COM ports)
-    ├── ARCCC_NetControl.png       # K4KNS Net Control
+    ├── FT8.png
+    ├── SSB.png
+    ├── CW.png
+    ├── WebSites.png
+    ├── N4MI_Dashboard.png
+    ├── CloseApps.png
+    ├── RotatorControl.png
+    ├── RotatorStop.png
+    ├── RotatorBearing.png
+    ├── RadioProgramming.png
+    ├── RT.png
+    ├── DevManager.png
+    ├── ARCCC_NetControl.png
     ├── Dir_N.png                  # Compass direction — North (0°)
     ├── Dir_NE.png                 # Compass direction — Northeast (45°)
     ├── Dir_E.png                  # Compass direction — East (90°)
@@ -92,7 +91,7 @@ streamdeck-hamradio/
     ├── DX_Asia.png                # DX region — Asia (342°)
     ├── DX_SouthAmerica.png        # DX region — South America (145°)
     ├── DX_Pacific.png             # DX region — Pacific (290°)
-    └── radio-programming/         # RT Systems radio icons
+    └── radio-programming/
         ├── IC-7610.png
         ├── IC-7300.png
         ├── IC-9700.png
@@ -112,11 +111,14 @@ streamdeck-hamradio/
 ## Quick Start
 
 ### 1. Copy scripts to your PC
+
 Save all files from `scripts/` and `dashboard/` to `C:\Ham Scripts\`
 
 ### 2. Edit paths in scripts
+
 Open each `.ps1` file in Notepad and update the app paths at the top to match your installation. Key paths to check in `HamRadioLauncher.ps1`:
-```powershell
+
+```
 $aclog      = "C:\Program Files (x86)\N3FJP Software...\aclog.exe"
 $wsjtx      = "C:\WSJT\wsjtx\bin\wsjtx.exe"
 $jtalert    = "C:\Program Files (x86)\HamApps\JTAlertV2\JTAlertV2.exe"
@@ -125,13 +127,14 @@ $pstrotator = "C:\Program Files (x86)\PstRotatorAz\PstRotatorAz.exe"
 ```
 
 ### 3. Configure Stream Deck buttons
+
 For each button, use the **Advanced Launcher** plugin with:
+
 - **Executable:** `powershell.exe`
 - **Arguments:** `-ExecutionPolicy Bypass -File "C:\Ham Scripts\ScriptName.ps1" -mode ft8`
 
-> ⚠️ **PowerShell 7 note:** If you have PowerShell 7 installed via the MSI installer, you can use `C:\Program Files\PowerShell\7\pwsh.exe` as the executable instead. Do **not** use the path from a Store or winget installation — those versions are installed to a protected directory (`WindowsApps`) that Stream Deck cannot access. When in doubt, `powershell.exe` (PowerShell 5.1, built into Windows) works reliably for all scripts in this repo.
-
 Example arguments for each mode:
+
 ```
 FT8:  -ExecutionPolicy Bypass -File "C:\Ham Scripts\HamRadioLauncher.ps1" -mode ft8
 CW:   -ExecutionPolicy Bypass -File "C:\Ham Scripts\HamRadioLauncher.ps1" -mode cw
@@ -139,53 +142,75 @@ SSB:  -ExecutionPolicy Bypass -File "C:\Ham Scripts\HamRadioLauncher.ps1" -mode 
 ```
 
 ### 4. Configure PSTRotatorAz for UDP control
+
 In PSTRotatorAz: **Communication → UDP Control → Enable**, port **12000**
 
 ### 5. Customize the dashboard
+
 Edit `N4MI_PropagationDashboard.html` and update the callsign and grid square to your own. Update the callsign in `dashboard_server.py` as well (`CALLSIGN = "N4MI"`).
 
-### 6. Configure the storm alert system (optional)
-If you have a WeatherFlow Tempest station, update these settings at the top of `dashboard_server.py`:
-```python
-TEMPEST_TOKEN      = "YOUR_TEMPEST_TOKEN_HERE"   # From tempestwx.com → Settings → Data Authorizations
-TEMPEST_STATION_ID = "YOUR_STATION_ID"           # Your Tempest station ID
-NWS_ZONE           = "GAC073"                    # Your NWS zone — find at weather.gov
-```
-If you don't have a Tempest station, the dashboard will still display NWS alerts — just leave the Tempest fields as placeholders.
+### 6. Set up HamShackFeed
 
-### 7. Open HamShackFeed
-Save `HamShackFeed.html` to `C:\Ham Scripts\` and open it directly in Chrome. No server required. Bookmark `file:///C:/Ham%20Scripts/HamShackFeed.html` for easy access.
+See the [HamShackFeed Setup](#hamshackfeed-setup) section below.
+
+---
+
+## HamShackFeed Setup
+
+HamShackFeed is a single HTML file that aggregates ham radio blogs, podcasts, and YouTube channels into one searchable dashboard. It works by fetching RSS feeds through the [rss2json.com](https://rss2json.com) API proxy.
+
+### Why an API key is required
+
+The file in this repo ships with a placeholder API key (`YOUR_RSS2JSON_API_KEY_HERE`). Without a real key, the proxy is rate-limited to **1 request per 10 seconds** — which means the default sources will load slowly and **adding new sources will consistently fail**.
+
+A free rss2json.com account gives you **10,000 requests per day**, which is more than enough for normal use.
+
+### Getting your free API key
+
+1. Go to [https://rss2json.com](https://rss2json.com)
+2. Click **Sign Up** and create a free account
+3. After logging in, your API key is shown on the dashboard
+4. Copy the key — it looks like: `u8ek4zaqygaq9omwvw4axvmyeqiiypogmj5b1ktx`
+
+### Adding your key to HamShackFeed
+
+Open `HamShackFeed.html` in a text editor and find this line near the top of the `<script>` block (around line 1020):
+
+```javascript
+const RSS2JSON_KEY = 'YOUR_RSS2JSON_API_KEY_HERE';
+```
+
+Replace the placeholder with your actual key:
+
+```javascript
+const RSS2JSON_KEY = 'your_actual_key_here';
+```
+
+Save the file. That's it — all feed fetching and the **+ Add Source** button will now work correctly.
+
+### Adding sources
+
+Open the file in your browser and click **+ Add Source**. Paste any of the following:
+
+- A blog URL — e.g. `https://www.kb6nu.com` (HamShackFeed tries `/feed` automatically for WordPress sites)
+- A direct RSS/Atom feed URL — e.g. `https://www.arrl.org/arrl.rss`
+- A Podbean or Spreaker podcast URL — feed is constructed automatically
+- A YouTube channel URL — e.g. `https://youtube.com/channel/UCxxxxx` (channel ID format works best)
+
+> **Note:** YouTube handle URLs (`@channelname`) cannot be auto-converted to a feed without the YouTube Data API. Use the full channel URL from the channel's **About** page instead.
 
 ---
 
 ## Script Reference
 
 | Script | Purpose | Key Arguments |
-|--------|---------|---------------|
+| --- | --- | --- |
 | `HamRadioLauncher.ps1` | Launches complete app stack for a mode | `-mode ft8` / `-mode cw` / `-mode ssb` |
 | `HamRadioChrome.ps1` | Opens ham radio websites in Chrome | none |
 | `CloseHamRadio.ps1` | Cleanly shuts down all ham radio apps | none |
 | `StartDashboard.ps1` | Starts Python server and opens dashboard | none |
-| `stop_dashboard.ps1` | Stops the dashboard server by PID | none |
 | `RotatorAzimuth.ps1` | Rotates antenna to any azimuth | `-az 270` (0–360) |
 | `RotatorStop.ps1` | Immediately stops antenna rotation | none |
-
----
-
-## Storm Alert Configuration Reference
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `TEMPEST_TOKEN` | YOUR_TEMPEST_TOKEN_HERE | WeatherFlow API personal access token |
-| `TEMPEST_STATION_ID` | YOUR_STATION_ID | Your Tempest station ID |
-| `NWS_ZONE` | GAC073 | NWS zone code for your county |
-| `NWS_POLL_SECONDS` | 120 | How often to check NWS alerts |
-| `TEMPEST_POLL_SECONDS` | 60 | How often to check Tempest data |
-| `LIGHTNING_WARNING_KM` | 40 | Distance for WARNING level (km) |
-| `LIGHTNING_CAUTION_KM` | 80 | Distance for CAUTION level (km) |
-| `LIGHTNING_RECENT_MINS` | 30 | Max age of strike to be considered active (min) |
-
-Find your NWS zone code at [weather.gov](https://www.weather.gov) → your local forecast office → zone forecast page.
 
 ---
 
@@ -194,7 +219,7 @@ Find your NWS zone code at [weather.gov](https://www.weather.gov) → your local
 These are approximate great-circle headings. Operators in other grid squares should calculate their own using ACLog, PSTRotatorAz's DXCC lookup, or an online great-circle calculator.
 
 | Region | Azimuth |
-|--------|---------|
+| --- | --- |
 | Europe | 50° |
 | West Africa | 80° |
 | S. America | 145° |
@@ -212,11 +237,7 @@ These are approximate great-circle headings. Operators in other grid squares sho
 - **Dashboard callsign/grid** — update in both `dashboard_server.py` and `N4MI_PropagationDashboard.html`.
 - **DX region azimuths** — update `-az` arguments in your Stream Deck button configurations.
 - **Launch delays** — adjust `$shortDelay` and `$jtalertDelay` in `HamRadioLauncher.ps1` if apps need more time to load on your PC.
-- **Tempest API token** — replace `YOUR_TEMPEST_TOKEN_HERE` in `dashboard_server.py` with your personal access token from tempestwx.com → Settings → Data Authorizations
-- **Tempest station ID** — replace `YOUR_STATION_ID` with your station ID found at tempestwx.com
-- **NWS zone code** — default is `GAC073` (Columbia County GA). Find your zone at weather.gov
-- **Lightning thresholds** — adjust `LIGHTNING_WARNING_KM` (default 40km) and `LIGHTNING_CAUTION_KM` (default 80km) to suit your preference
-- **HamShackFeed sources** — add or remove RSS sources using the built-in Add Source button in the dashboard
+- **HamShackFeed API key** — set `RSS2JSON_KEY` in `HamShackFeed.html` as described above.
 
 ---
 
@@ -224,11 +245,11 @@ These are approximate great-circle headings. Operators in other grid squares sho
 
 Full writeups with setup instructions, screenshots, and explanations at **[n4mi.tech](https://n4mi.tech)**:
 
-1. [Stream Deck for Ham Radio — Part 1: Mode Launchers & PowerShell Scripts](https://n4mi.tech/integrating-elgato-stream-deck-with-amateur-radio/)
-2. [Stream Deck for Ham Radio — Part 2: A Live Propagation Dashboard](https://n4mi.tech/stream-deck-for-ham-radio-part-2-a-live-propagation-dashboard/)
-3. [Stream Deck for Ham Radio — Part 3: Rotator Control](https://n4mi.tech/stream-deck-for-ham-radio-part-3-rotator-control/)
-4. [Stream Deck for Ham Radio — Part 4: HamShackFeed — My Personal Ham Radio Newsroom](https://n4mi.tech/stream-deck-for-ham-radio-part-4-hamshackfeed-my-personal-ham-radio-newsroom/)
-5. [Stream Deck for Ham Radio — Part 5: Custom Icons, Getting Started & Closing Thoughts](https://n4mi.tech/stream-deck-for-ham-radio-part-5-custom-icons-getting-started-closing-thoughts/)
+1. Stream Deck Basics — Mode Launchers & PowerShell Scripts
+2. The Personal Operating Portal — Propagation Dashboard
+3. Rotator Control from the Stream Deck
+4. Custom Icons, Getting Started & Closing Thoughts
+5. HamShackFeed — Ham Radio Content Aggregator
 
 ---
 
