@@ -35,7 +35,8 @@ with assistance from [Claude AI](https://claude.ai/).
 - [Advanced Launcher plugin](https://barraider.com/) by BarRaider (from Stream Deck Plugin Store)
 - [Python 3.13](https://www.python.org/downloads/) (for dashboard server)
   - ⚠️ Check **"Add Python to PATH"** during installation
-- PowerShell 5.1 (built into Windows) or [PowerShell 7](https://github.com/PowerShell/PowerShell) (optional upgrade)
+- PowerShell 5.1 (built into Windows) or [PowerShell 7](https://github.com/PowerShell/PowerShell/releases/latest) (optional upgrade)
+  - ⚠️ If installing PowerShell 7, use the **MSI installer** from the GitHub releases page — not winget or the Microsoft Store. The Store version installs to a protected directory that Stream Deck cannot access.
 
 ### Ham Radio Software (paths configured in scripts)
 - [ACLog](https://www.n3fjp.com/aclog.html) — N3FJP Amateur Contact Log
@@ -56,6 +57,7 @@ streamdeck-hamradio/
 │   ├── HamRadioChrome.ps1         # Ham radio website launcher
 │   ├── CloseHamRadio.ps1          # Clean shutdown script
 │   ├── StartDashboard.ps1         # Dashboard server launcher
+│   ├── stop_dashboard.ps1         # Dashboard server stop (PID file method)
 │   ├── RotatorAzimuth.ps1         # Antenna direction control
 │   └── RotatorStop.ps1            # Stop rotation immediately
 ├── dashboard/
@@ -68,6 +70,7 @@ streamdeck-hamradio/
     ├── CW.png                     # CW mode launcher
     ├── WebSites.png               # Ham radio websites
     ├── N4MI_Dashboard.png         # Operating portal dashboard
+    ├── StopDashboard.png          # Stop dashboard server
     ├── CloseApps.png              # Close all apps (73)
     ├── RotatorControl.png         # Rotator control folder
     ├── RotatorStop.png            # Stop rotation
@@ -126,6 +129,8 @@ For each button, use the **Advanced Launcher** plugin with:
 - **Executable:** `powershell.exe`
 - **Arguments:** `-ExecutionPolicy Bypass -File "C:\Ham Scripts\ScriptName.ps1" -mode ft8`
 
+> ⚠️ **PowerShell 7 note:** If you have PowerShell 7 installed via the MSI installer, you can use `C:\Program Files\PowerShell\7\pwsh.exe` as the executable instead. Do **not** use the path from a Store or winget installation — those versions are installed to a protected directory (`WindowsApps`) that Stream Deck cannot access. When in doubt, `powershell.exe` (PowerShell 5.1, built into Windows) works reliably for all scripts in this repo.
+
 Example arguments for each mode:
 ```
 FT8:  -ExecutionPolicy Bypass -File "C:\Ham Scripts\HamRadioLauncher.ps1" -mode ft8
@@ -161,6 +166,7 @@ Save `HamShackFeed.html` to `C:\Ham Scripts\` and open it directly in Chrome. No
 | `HamRadioChrome.ps1` | Opens ham radio websites in Chrome | none |
 | `CloseHamRadio.ps1` | Cleanly shuts down all ham radio apps | none |
 | `StartDashboard.ps1` | Starts Python server and opens dashboard | none |
+| `stop_dashboard.ps1` | Stops the dashboard server by PID | none |
 | `RotatorAzimuth.ps1` | Rotates antenna to any azimuth | `-az 270` (0–360) |
 | `RotatorStop.ps1` | Immediately stops antenna rotation | none |
 
