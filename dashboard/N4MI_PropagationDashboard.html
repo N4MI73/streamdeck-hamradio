@@ -342,12 +342,22 @@
       <img src="https://www.hamqsl.com/solar.php" style="height:170px;width:auto;border:none;display:block" alt="HamQSL Solar Widget - Solar Image"/>
     </a>
   </div>
-  <div style="margin-left:auto;display:flex;flex-direction:column;gap:5px">
+  <div style="margin-left:auto;display:flex;flex-direction:column;gap:5px;flex-shrink:0">
     <a href="https://www.hamqsl.com/solar3.html" target="_blank" class="cluster-link" style="font-size:9px;padding:5px 10px">&#9654; HAMQSL CONDITIONS</a>
     <a href="https://www.hamqsl.com/solar2.html" target="_blank" class="cluster-link" style="font-size:9px;padding:5px 10px">&#9654; HAMQSL DATA GUIDE</a>
     <a href="https://www.hamqsl.com/solar1.html" target="_blank" class="cluster-link" style="font-size:9px;padding:5px 10px">&#9654; HAMQSL TOOLS</a>
   </div>
+
+  <!-- DX Calendar -->
+  <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;margin-left:20px">
+    <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--accent2);white-space:nowrap">DX CALENDAR · DXNEWS</div>
+    <div style="border:1px solid var(--border);background:var(--bg);padding:6px;overflow-y:auto;max-height:155px;min-width:320px">
+      <div id="DXNewsCalendar"></div>
+    </div>
+    <a href="https://dxnews.com/calendar/" target="_blank" class="cluster-link accent2" style="font-size:9px;padding:4px 10px;text-align:center">&#9654; FULL CALENDAR (NEW TAB)</a>
+  </div>
 </div>
+<script>var url='https://dxnews.com/calendar.php?width=21&lang=en';var script=document.createElement('script');script.setAttribute('src',url);document.getElementsByTagName('head')[0].appendChild(script);</script>
 
 <div class="main">
 
@@ -370,6 +380,24 @@
          onmouseout="this.style.background='transparent';this.style.color='var(--accent2)'">
         &#9654; DXVIEW EM83 (NEW TAB)
       </a>
+      <a href="https://hamdash.com/" target="_blank"
+         style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--accent);color:var(--accent);text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">
+        &#9654; HAMDASH (NEW TAB)
+      </a>
+      <a href="https://dxlook.com/" target="_blank"
+         style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--accent);color:var(--accent);text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">
+        &#9654; DXLOOK (NEW TAB)
+      </a>
+      <a href="https://openhamclock.com/" target="_blank"
+         style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--accent);color:var(--accent);text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">
+        &#9654; OPENHAMCLOCK (NEW TAB)
+      </a>
     </div>
     <div class="map-container">
       <iframe id="map-kc2g" style="width:100%;height:100%;border:none;min-height:340px;display:block" src="https://prop.kc2g.com/" title="KC2G MUF map" allowfullscreen loading="lazy"></iframe>
@@ -385,6 +413,9 @@
     <a class="cluster-link" href="https://hf.dxview.org/perspective/EM83VK" target="_blank">&#9654; DXVIEW EM83VK</a>
     <a class="cluster-link" href="https://www.dxmaps.com/spots/map.php?Lan=E&Frec=0&ML=M&Map=NA&HF=1" target="_blank">&#9654; DXMAPS N.AMERICA</a>
     <a class="cluster-link" href="https://www.voacap.com/hf/index.html" target="_blank">&#9654; VOACAP PATH TOOL</a>
+    <a class="cluster-link" href="https://hamdash.com/" target="_blank">&#9654; HAMDASH</a>
+    <a class="cluster-link" href="https://dxlook.com/" target="_blank">&#9654; DXLOOK</a>
+    <a class="cluster-link" href="https://openhamclock.com/" target="_blank">&#9654; OPENHAMCLOCK</a>
     <a class="cluster-link" href="https://www.hamqsl.com/solar.html" target="_blank">&#9654; HAMQSL SOLAR</a>
     <a class="cluster-link" href="https://www.hamqsl.com/solar3.html" target="_blank">&#9654; HAMQSL CONDITIONS</a>
     <a class="cluster-link" href="https://www.hamqsl.com/solar2.html" target="_blank">&#9654; HAMQSL DATA GUIDE</a>
