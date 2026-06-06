@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ManualShelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300;0,7..72,500;0,7..72,700;1,7..72,400&family=JetBrains+Mono:wght@400;500&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f5f2ee;
+  --surface:   #ffffff;
+  --surface2:  #faf8f5;
+  --border:    #e2ddd8;
+  --border2:   #ccc8c0;
+  --text:      #1a1714;
+  --text2:     #5a534c;
+  --text3:     #9e9590;
+  --accent:    #c0392b;
+  --accent2:   #2c6fad;
+  --accent-bg: #fdf1f0;
+  --accent2-bg:#eef4fb;
+  --pdf-color: #c0392b;
+  --img-color: #2980b9;
+  --tag-bg:    #ede9e3;
+  --tag-text:  #5a534c;
+  --fav:       #e67e22;
+  --remote:    #8e44ad;
+  --shadow:    0 1px 3px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.07);
+  --radius:    6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Literata', Georgia, serif;
+  font-size: 15px;
+  min-height: 100vh;
+}
+
+/* ── Topbar ─────────────────────────────────────────── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.logo-icon {
+  width: 30px; height: 30px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+}
+.logo-icon svg { fill: white; width: 18px; height: 18px; }
+
+.search-wrap {
+  flex: 1; max-width: 460px; position: relative;
+}
+.search-wrap input {
+  width: 100%;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 14px 8px 38px;
+  font-family: 'Literata', serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface2);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-wrap input:focus { outline: none; border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(44,111,173,0.12); }
+.search-icon {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--text3); pointer-events: none;
+}
+
+.topbar-actions { display: flex; gap: 8px; margin-left: auto; }
+.btn {
+  font-family: 'Syne', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text2);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--surface2); border-color: var(--text3); color: var(--text); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn.primary:hover { background: #a93226; }
+.btn.secondary { background: var(--accent2); border-color: var(--accent2); color: white; }
+.btn.secondary:hover { background: #2560a0; }
+
+/* ── Layout ──────────────────────────────────────────── */
+.shell { display: flex; min-height: calc(100vh - 60px); }
+
+/* ── Sidebar ──────────────────────────────────────────── */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar-section { padding: 0 14px; margin-bottom: 6px; }
+.sidebar-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 0 4px;
+  margin-bottom: 4px;
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  color: var(--text2);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: 'Literata', serif;
+}
+.sidebar-link:hover { background: var(--surface2); color: var(--text); }
+.sidebar-link.active { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+.sidebar-link .badge {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+}
+
+.tag-cloud { padding: 0 14px; }
+.tag-pill {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin: 2px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.tag-pill:hover, .tag-pill.active { background: var(--accent2); color: white; }
+
+.remote-section { padding: 0 14px; margin-top: auto; }
+.remote-header {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--remote);
+  padding: 4px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.remote-machine {
+  border: 1px solid #ddd0e8;
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: #faf6ff;
+  margin-bottom: 6px;
+}
+.remote-machine-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--remote);
+  margin-bottom: 2px;
+}
+.remote-machine-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+}
+
+/* ── Main content ─────────────────────────────────────── */
+.content { flex: 1; padding: 24px 28px; min-width: 0; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.filter-select {
+  font-family: 'Literata', serif;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.filter-select:focus { outline: none; border-color: var(--accent2); }
+.sort-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+}
+.view-toggle { display: flex; gap: 2px; }
+.view-btn {
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 14px;
+  transition: all 0.12s;
+}
+.view-btn:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.view-btn:last-child  { border-radius: 0 var(--radius) var(--radius) 0; }
+.view-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+.result-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  margin-left: auto;
+}
+
+/* ── Grid view ────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.18s, transform 0.18s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.card.remote { border-color: #ddd0e8; background: #fdfaff; }
+
+.card-thumb {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: var(--surface2);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+.card-thumb-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text3);
+}
+.card-thumb-placeholder .type-icon {
+  font-size: 40px;
+  opacity: 0.4;
+}
+.card-thumb-placeholder .type-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.card-fav-badge {
+  position: absolute;
+  top: 8px; right: 8px;
+  font-size: 14px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
+.card-type-badge {
+  position: absolute;
+  bottom: 8px; left: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.card-type-badge.pdf   { background: var(--accent); color: white; }
+.card-type-badge.image { background: var(--img-color); color: white; }
+.card-type-badge.remote { background: var(--remote); color: white; }
+
+.card-body { padding: 10px 12px; flex: 1; }
+.card-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text3);
+  margin-bottom: 5px;
+}
+.card-desc {
+  font-size: 11px;
+  color: var(--text2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.card-tags { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 3px; }
+.card-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 2px 6px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  border-radius: 2px;
+}
+
+/* ── List view ────────────────────────────────────────── */
+.list { display: flex; flex-direction: column; gap: 6px; }
+.list-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.15s;
+}
+.list-row:hover { box-shadow: var(--shadow-hover); }
+.list-row.remote { border-color: #ddd0e8; background: #fdfaff; }
+.list-thumb {
+  width: 48px; height: 64px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.list-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.list-info { flex: 1; min-width: 0; }
+.list-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+.list-desc { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.list-tags { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px; }
+.list-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.list-type-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.list-type-badge.pdf   { background: var(--accent); color: white; }
+.list-type-badge.image { background: var(--img-color); color: white; }
+.list-type-badge.remote { background: var(--remote); color: white; }
+
+/* ── Detail panel ────────────────────────────────────── */
+.detail-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 400;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.detail-overlay.open { display: flex; }
+.detail-panel {
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.detail-top {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+.detail-thumb-col {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--surface2);
+  border-radius: 10px 0 0 0;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+}
+.detail-thumb-col img {
+  width: 100%;
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+}
+.detail-thumb-placeholder {
+  width: 100%;
+  aspect-ratio: 3/4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text3);
+}
+.detail-thumb-placeholder .big-icon { font-size: 64px; opacity: 0.3; }
+.detail-info-col { flex: 1; padding: 20px 22px; }
+.detail-title-input {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  width: 100%;
+  padding: 2px 0;
+  transition: border-color 0.15s;
+  background: transparent;
+}
+.detail-title-input:focus { outline: none; border-bottom-color: var(--accent2); }
+.detail-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  margin: 6px 0 14px;
+  word-break: break-all;
+}
+.detail-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.detail-field { flex: 1; min-width: 120px; }
+.detail-field label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 4px;
+}
+.detail-field input, .detail-field select, .detail-field textarea {
+  width: 100%;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-family: 'Literata', serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface2);
+}
+.detail-field input:focus, .detail-field select:focus, .detail-field textarea:focus {
+  outline: none; border-color: var(--accent2);
+}
+.detail-field textarea { resize: vertical; min-height: 64px; }
+.detail-actions {
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+/* ── Scan modal ────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 500;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 24px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  max-width: 700px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+}
+.modal-close {
+  border: none; background: none; cursor: pointer;
+  font-size: 20px; color: var(--text3); padding: 2px 6px;
+  border-radius: 4px; transition: background 0.12s;
+}
+.modal-close:hover { background: var(--surface2); color: var(--text); }
+.modal-body { padding: 18px 22px; flex: 1; overflow-y: auto; }
+.modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.scan-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.scan-input-row input {
+  flex: 1;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface2);
+}
+.scan-input-row input:focus { outline: none; border-color: var(--accent2); }
+
+.scan-results-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.scan-results-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+}
+.scan-list { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; }
+.scan-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  font-size: 13px;
+}
+.scan-item.in-catalog { opacity: 0.45; }
+.scan-item input[type=checkbox] { flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; }
+.scan-item-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.scan-item-path { font-size: 10px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-item-size {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+.scan-item-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.scan-item-badge.pdf     { background: var(--accent); color: white; }
+.scan-item-badge.image   { background: var(--img-color); color: white; }
+.scan-item-badge.added   { background: var(--tag-bg); color: var(--text3); }
+.scan-item-badge.updated { background: #d68910; color: white; }
+
+/* ── Remote detail overlay ─────────────────────────────── */
+.remote-detail {
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  max-width: 480px;
+  width: 100%;
+  overflow: hidden;
+}
+.remote-detail-header {
+  background: var(--remote);
+  color: white;
+  padding: 14px 18px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.remote-detail-body { padding: 18px 20px; }
+.remote-detail-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+.remote-field {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.remote-field-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  width: 80px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* ── Misc ─────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text3);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state h3 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; color: var(--text2); margin-bottom: 6px; }
+.empty-state p { font-size: 14px; }
+
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--text);
+  color: white;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 10px 18px;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  z-index: 900;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.25s;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #27ae60; }
+.toast.error   { background: var(--accent); }
+
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent2);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.stats-bar {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 14px;
+  font-size: 13px;
+}
+.stat-chip-val {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text);
+}
+.stat-chip-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+}
+
+.remote-badge-count {
+  background: var(--remote);
+  color: white;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+    </div>
+    ManualShelf
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search manuals, makes, models, tags…" oninput="debounceSearch()">
+  </div>
+  <div class="topbar-actions">
+    <button class="btn" onclick="openScanModal()">📂 Add Manuals</button>
+    <button class="btn" onclick="openConfigModal()">⚙ Settings</button>
+    <button class="btn secondary" onclick="loadRemote()">📡 Remote</button>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Library</div>
+      <button class="sidebar-link active" id="nav-all" onclick="setFilter('all')">
+        📚 All Manuals <span class="badge" id="badge-all">0</span>
+      </button>
+      <button class="sidebar-link" id="nav-pdf" onclick="setFilter('pdf')">
+        📄 PDFs <span class="badge" id="badge-pdf">0</span>
+      </button>
+      <button class="sidebar-link" id="nav-image" onclick="setFilter('image')">
+        🖼 Screenshots <span class="badge" id="badge-img">0</span>
+      </button>
+      <button class="sidebar-link" id="nav-fav" onclick="setFilter('fav')">
+        ⭐ Favorites <span class="badge" id="badge-fav">0</span>
+      </button>
+      <button class="sidebar-link" id="nav-remote" onclick="setFilter('remote')">
+        📡 Remote Manuals <span id="remote-badge-count" class="remote-badge-count" style="display:none">0</span>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Categories</div>
+      <div id="categoryList"></div>
+    </div>
+    <div class="tag-cloud sidebar-section" style="margin-top:8px">
+      <div class="sidebar-label" style="margin-bottom:6px">Tags</div>
+      <div id="tagCloud"></div>
+    </div>
+    <div class="remote-section" id="remoteSidebar" style="padding-top:12px; border-top:1px solid var(--border); margin-top:12px">
+      <div class="remote-header">📡 Other Computers</div>
+      <div id="remoteList"><span style="font-size:11px;color:var(--text3);padding:4px">Loading…</span></div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="toolbar">
+      <select class="filter-select" id="catFilter" onchange="loadManuals()">
+        <option value="">All Categories</option>
+      </select>
+      <span class="sort-label">Sort:</span>
+      <select class="filter-select" id="sortSelect" onchange="loadManuals()">
+        <option value="title">Title</option>
+        <option value="added">Date Added</option>
+        <option value="name">Filename</option>
+        <option value="opens">Most Opened</option>
+      </select>
+      <select class="filter-select" id="orderSelect" onchange="loadManuals()">
+        <option value="asc">A → Z</option>
+        <option value="desc">Z → A</option>
+      </select>
+      <span class="result-count" id="resultCount">— items</span>
+      <div class="view-toggle">
+        <button class="view-btn active" id="btnGrid" onclick="setView('grid')" title="Grid">⊞</button>
+        <button class="view-btn" id="btnList" onclick="setView('list')" title="List">≡</button>
+      </div>
+    </div>
+    <div id="catalogContainer"></div>
+  </div>
+</div>
+
+<!-- Detail Overlay -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-top">
+      <div class="detail-thumb-col" id="detailThumb"></div>
+      <div class="detail-info-col">
+        <input class="detail-title-input" id="detailTitle" type="text">
+        <div class="detail-path" id="detailPath"></div>
+        <div class="detail-row">
+          <div class="detail-field">
+            <label>Make / Manufacturer</label>
+            <input type="text" id="detailMake" placeholder="e.g. Icom, Yaesu">
+          </div>
+          <div class="detail-field">
+            <label>Model</label>
+            <input type="text" id="detailModel" placeholder="e.g. IC-7610">
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field">
+            <label>Category</label>
+            <input type="text" id="detailCategory" placeholder="e.g. Transceiver, Software">
+          </div>
+        </div>
+        <div class="detail-field" style="margin-bottom:10px">
+          <label>Description</label>
+          <textarea id="detailDesc" rows="3" placeholder="Short description…"></textarea>
+        </div>
+        <div class="detail-field">
+          <label>Tags (comma-separated)</label>
+          <input type="text" id="detailTags" placeholder="e.g. HF, Icom, logging">
+        </div>
+      </div>
+    </div>
+    <div class="detail-actions" id="detailActions"></div>
+  </div>
+</div>
+
+<!-- Remote Detail Overlay -->
+<div class="detail-overlay" id="remoteOverlay" onclick="closeRemoteDetail(event)">
+  <div class="remote-detail">
+    <div class="remote-detail-header" id="remoteDetailHeader">Remote Manual</div>
+    <div class="remote-detail-body" id="remoteDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeRemoteDetail()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scan Modal -->
+<div class="modal-overlay" id="scanModal" onclick="closeModalOutside(event,'scanModal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">📂 Add Manuals — Folder Scan</span>
+      <button class="modal-close" onclick="closeScanModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="scan-input-row">
+        <input type="text" id="scanFolder" placeholder="Paste folder path, e.g. C:\Manuals\Radio" onkeydown="if(event.key==='Enter')doScan()">
+        <button class="btn primary" onclick="doScan()" id="scanBtn">Scan</button>
+      </div>
+      <div id="scanStatus" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:10px"></div>
+      <div id="scanResultsWrap" style="display:none">
+        <div class="scan-results-header">
+          <span class="scan-results-count" id="scanCount"></span>
+          <button class="btn" style="font-size:11px;padding:4px 10px" onclick="selectAllScan(true)">Select All New</button>
+          <button class="btn" style="font-size:11px;padding:4px 10px" onclick="selectAllScan(false)">Deselect All</button>
+        </div>
+        <div class="scan-list" id="scanList"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeScanModal()">Cancel</button>
+      <button class="btn primary" onclick="addSelected()" id="addSelBtn" style="display:none">Add Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Config Modal -->
+<div class="modal-overlay" id="configModal" onclick="closeModalOutside(event,'configModal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">⚙ Settings</span>
+      <button class="modal-close" onclick="closeConfigModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-field" style="margin-bottom:14px">
+        <label>Computer Name (shown to other computers)</label>
+        <input type="text" id="cfgComputer" placeholder="e.g. HamComputer">
+      </div>
+      <div class="detail-field" style="margin-bottom:14px">
+        <label>NAS Exchange Folder (optional — for cross-computer visibility)</label>
+        <input type="text" id="cfgExchange" placeholder="e.g. Z:\Exchange or \\NAS\Exchange">
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:14px">
+          <input type="checkbox" id="cfgPush"> Push my catalog to exchange folder
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:14px">
+          <input type="checkbox" id="cfgPull"> Read other computers' catalogs
+        </label>
+      </div>
+      <div class="detail-field" style="margin-bottom:6px">
+        <label>Saved Scan Folders</label>
+        <div id="savedFoldersList" style="margin-bottom:8px;display:flex;flex-direction:column;gap:4px"></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="addFolderInput" placeholder="Add a folder to save" style="flex:1;border:1px solid var(--border2);border-radius:4px;padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:12px">
+          <button class="btn" onclick="addSavedFolder()">Add</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeConfigModal()">Cancel</button>
+      <button class="btn primary" onclick="saveConfig()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let currentView   = 'grid';
+let activeFilter  = 'all';
+let activeTag     = '';
+let activeCategory = '';
+let searchTerm    = '';
+let currentManual = null;
+let remoteData    = [];
+let scanResults   = [];
+let searchTimer   = null;
+
+// ── Boot ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadStats();
+  loadManuals();
+  loadTags();
+  loadCategories();
+  loadRemote();
+});
+
+// ── Utils ──────────────────────────────────────────────
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  setTimeout(() => el.className = 'toast ' + type, 2500);
+}
+
+function fmtSize(bytes) {
+  if (!bytes) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(0) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+}
+
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTerm = document.getElementById('searchInput').value;
+  searchTimer = setTimeout(loadManuals, 280);
+}
+
+// ── Stats ──────────────────────────────────────────────
+async function loadStats() {
+  const r = await fetch('/api/stats');
+  const s = await r.json();
+  document.getElementById('badge-all').textContent = s.total;
+  document.getElementById('badge-pdf').textContent = s.pdfs;
+  document.getElementById('badge-img').textContent = s.images;
+  document.getElementById('badge-fav').textContent = s.favorites;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-chip"><div class="stat-chip-val">${s.total}</div><div class="stat-chip-label">Total<br>Manuals</div></div>
+    <div class="stat-chip"><div class="stat-chip-val" style="color:var(--pdf-color)">${s.pdfs}</div><div class="stat-chip-label">PDF<br>Files</div></div>
+    <div class="stat-chip"><div class="stat-chip-val" style="color:var(--img-color)">${s.images}</div><div class="stat-chip-label">Images /<br>Screenshots</div></div>
+    <div class="stat-chip"><div class="stat-chip-val" style="color:var(--fav)">${s.favorites}</div><div class="stat-chip-label">Favorites</div></div>
+    <div class="stat-chip" style="margin-left:auto"><div class="stat-chip-val" style="font-size:13px;color:var(--text2)">${s.computer}</div><div class="stat-chip-label">This<br>Computer</div></div>
+  `;
+}
+
+// ── Filters & nav ──────────────────────────────────────
+function setFilter(f) {
+  activeFilter = f;
+  activeTag = '';
+  activeCategory = '';
+  document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+  const nav = document.getElementById('nav-' + (f==='all'?'all':f==='pdf'?'pdf':f==='image'?'image':f==='fav'?'fav':f==='remote'?'remote':'all'));
+  if (nav) nav.classList.add('active');
+  document.getElementById('catFilter').value = '';
+  loadManuals();
+}
+
+function setTagFilter(tag) {
+  activeTag = activeTag === tag ? '' : tag;
+  document.querySelectorAll('.tag-pill').forEach(el => el.classList.toggle('active', el.dataset.tag === activeTag));
+  loadManuals();
+}
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('btnGrid').classList.toggle('active', v === 'grid');
+  document.getElementById('btnList').classList.toggle('active', v === 'list');
+  loadManuals();
+}
+
+// ── Main catalog load ──────────────────────────────────
+async function loadManuals() {
+  if (activeFilter === 'remote') {
+    renderRemoteGrid();
+    return;
+  }
+  const q    = searchTerm;
+  const sort = document.getElementById('sortSelect').value;
+  const ord  = document.getElementById('orderSelect').value;
+  const cat  = document.getElementById('catFilter').value;
+  const type = (activeFilter === 'pdf' || activeFilter === 'image') ? activeFilter : '';
+  const fav  = activeFilter === 'fav' ? '1' : '';
+
+  let url = `/api/manuals?sort=${sort}&order=${ord}`;
+  if (q)   url += `&q=${encodeURIComponent(q)}`;
+  if (type) url += `&type=${type}`;
+  if (fav)  url += `&favorite=1`;
+  if (activeTag) url += `&tag=${encodeURIComponent(activeTag)}`;
+  if (cat)  url += `&category=${encodeURIComponent(cat)}`;
+
+  const res  = await fetch(url);
+  const data = await res.json();
+  document.getElementById('resultCount').textContent = data.length + ' item' + (data.length === 1 ? '' : 's');
+  renderCatalog(data);
+}
+
+function renderCatalog(manuals) {
+  const container = document.getElementById('catalogContainer');
+  if (!manuals.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>Nothing here yet</h3><p>Use "Add Manuals" to scan a folder and add files to your catalog.</p></div>`;
+    return;
+  }
+  if (currentView === 'grid') {
+    container.innerHTML = `<div class="grid">${manuals.map(cardHtml).join('')}</div>`;
+  } else {
+    container.innerHTML = `<div class="list">${manuals.map(listRowHtml).join('')}</div>`;
+  }
+}
+
+function cardHtml(m) {
+  const thumb = m.thumb_path
+    ? `<img src="/static/${m.thumb_path}" alt="${esc(m.title)}" loading="lazy">`
+    : `<div class="card-thumb-placeholder"><div class="type-icon">${m.file_type==='pdf'?'📄':'🖼'}</div><div class="type-label">${m.file_type.toUpperCase()}</div></div>`;
+  const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,3).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
+  const meta = [m.make, m.model, m.page_count ? m.page_count+' pp' : null, fmtSize(m.file_size)].filter(Boolean).join(' · ');
+  return `
+    <div class="card" onclick="openDetail(${m.id})">
+      <div class="card-thumb">
+        ${thumb}
+        ${m.favorite ? '<span class="card-fav-badge">⭐</span>' : ''}
+        <span class="card-type-badge ${m.file_type}">${m.file_type.toUpperCase()}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(m.title)}</div>
+        <div class="card-meta">${meta}</div>
+        ${m.description ? `<div class="card-desc">${esc(m.description)}</div>` : ''}
+        ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function listRowHtml(m) {
+  const thumb = m.thumb_path
+    ? `<img src="/static/${m.thumb_path}" alt="" loading="lazy">`
+    : `<span style="font-size:28px;opacity:.3">${m.file_type==='pdf'?'📄':'🖼'}</span>`;
+  const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,4).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
+  const meta = [m.make, m.model, m.page_count ? m.page_count+' pp' : null].filter(Boolean).join(' · ');
+  return `
+    <div class="list-row" onclick="openDetail(${m.id})">
+      <div class="list-thumb">${thumb}</div>
+      <div class="list-info">
+        <div class="list-title">${m.favorite?'⭐ ':''}${esc(m.title)}</div>
+        ${meta ? `<div class="list-subtitle">${meta}</div>` : ''}
+        ${m.description ? `<div class="list-desc">${esc(m.description)}</div>` : ''}
+        ${tags ? `<div class="list-tags">${tags}</div>` : ''}
+        <div class="list-subtitle" style="margin-top:3px">📁 ${esc(m.file_path)}</div>
+      </div>
+      <div class="list-right">
+        <span class="list-type-badge ${m.file_type}">${m.file_type.toUpperCase()}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${fmtSize(m.file_size)}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${fmtDate(m.added_at)}</span>
+      </div>
+    </div>`;
+}
+
+// ── Detail panel ───────────────────────────────────────
+async function openDetail(id) {
+  const r = await fetch(`/api/manuals/${id}`);
+  currentManual = await r.json();
+  const m = currentManual;
+
+  // Thumb
+  const thumbCol = document.getElementById('detailThumb');
+  if (m.thumb_path) {
+    thumbCol.innerHTML = `<img src="/static/${m.thumb_path}" alt="${esc(m.title)}" style="width:100%;border-radius:3px;box-shadow:var(--shadow)">`;
+  } else {
+    thumbCol.innerHTML = `<div class="detail-thumb-placeholder"><div class="big-icon">${m.file_type==='pdf'?'📄':'🖼'}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase">${m.file_type}</div></div>`;
+  }
+
+  document.getElementById('detailTitle').value   = m.title;
+  document.getElementById('detailPath').textContent = m.file_path + (m.page_count ? ` · ${m.page_count} pages` : '') + ` · ${fmtSize(m.file_size)}`;
+  document.getElementById('detailMake').value     = m.make || '';
+  document.getElementById('detailModel').value    = m.model || '';
+  document.getElementById('detailCategory').value = m.category || '';
+  document.getElementById('detailDesc').value     = m.description || '';
+  document.getElementById('detailTags').value     = m.tags || '';
+
+  document.getElementById('detailActions').innerHTML = `
+    <button class="btn primary" onclick="openFile(${m.id})">📂 Open File</button>
+    <button class="btn" onclick="saveDetail(${m.id})">💾 Save Changes</button>
+    <button class="btn" onclick="toggleFav(${m.id})" id="favBtn">${m.favorite ? '★ Unfavorite' : '☆ Favorite'}</button>
+    <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">
+      Opened ${m.open_count} time${m.open_count===1?'':'s'}${m.last_opened ? ' · Last: '+fmtDate(m.last_opened) : ''}
+    </span>
+    <button class="btn" onclick="deleteManual(${m.id})" style="color:var(--accent);border-color:var(--accent)" title="Remove from catalog">🗑 Remove</button>
+  `;
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail(e) {
+  if (!e || e.target === document.getElementById('detailOverlay')) {
+    document.getElementById('detailOverlay').classList.remove('open');
+    currentManual = null;
+  }
+}
+
+async function saveDetail(id) {
+  const payload = {
+    title:       document.getElementById('detailTitle').value,
+    make:        document.getElementById('detailMake').value,
+    model:       document.getElementById('detailModel').value,
+    category:    document.getElementById('detailCategory').value,
+    description: document.getElementById('detailDesc').value,
+    tags:        document.getElementById('detailTags').value,
+  };
+  await fetch(`/api/manuals/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  toast('Saved', 'success');
+  loadManuals(); loadTags(); loadCategories(); loadStats();
+}
+
+async function openFile(id) {
+  const r = await fetch(`/api/open/${id}`, {method:'POST'});
+  const d = await r.json();
+  if (d.ok) {
+    toast('Opening file…', 'success');
+    // Update open count in actions area
+    currentManual.open_count = (currentManual.open_count||0) + 1;
+    currentManual.last_opened = new Date().toISOString();
+  } else {
+    toast(d.error || 'Could not open file', 'error');
+  }
+}
+
+async function toggleFav(id) {
+  const newFav = currentManual.favorite ? 0 : 1;
+  await fetch(`/api/manuals/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({favorite: newFav})});
+  currentManual.favorite = newFav;
+  document.getElementById('favBtn').textContent = newFav ? '★ Unfavorite' : '☆ Favorite';
+  loadManuals(); loadStats();
+}
+
+async function deleteManual(id) {
+  if (!confirm('Remove this manual from the catalog? (The file will not be deleted.)')) return;
+  await fetch(`/api/manuals/${id}`, {method:'DELETE'});
+  closeDetail();
+  toast('Removed from catalog', 'success');
+  loadManuals(); loadStats(); loadTags();
+}
+
+// ── Tags & categories ──────────────────────────────────
+async function loadTags() {
+  const r = await fetch('/api/tags');
+  const tags = await r.json();
+  const cloud = document.getElementById('tagCloud');
+  cloud.innerHTML = tags.map(t =>
+    `<span class="tag-pill" data-tag="${esc(t)}" onclick="setTagFilter('${esc(t)}')">${esc(t)}</span>`
+  ).join('');
+}
+
+async function loadCategories() {
+  const r = await fetch('/api/categories');
+  const cats = await r.json();
+  const list = document.getElementById('categoryList');
+  list.innerHTML = cats.map(c =>
+    `<button class="sidebar-link" onclick="setCatFilter('${esc(c)}')" style="font-size:13px">${esc(c)}</button>`
+  ).join('');
+  const sel = document.getElementById('catFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option value="${esc(c)}" ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+}
+
+function setCatFilter(cat) {
+  activeCategory = cat;
+  document.getElementById('catFilter').value = cat;
+  loadManuals();
+}
+
+// ── Remote ────────────────────────────────────────────
+async function loadRemote() {
+  const r = await fetch('/api/remote');
+  remoteData = await r.json();
+  const totalRemote = remoteData.reduce((s, m) => s + (m.manuals ? m.manuals.length : 0), 0);
+  const countBadge = document.getElementById('remote-badge-count');
+  if (totalRemote > 0) {
+    countBadge.textContent = totalRemote;
+    countBadge.style.display = 'inline';
+  } else {
+    countBadge.style.display = 'none';
+  }
+
+  const rlist = document.getElementById('remoteList');
+  if (!remoteData.length) {
+    rlist.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:4px">No other computers found.<br><span style="font-size:10px">Configure exchange folder in Settings.</span></div>`;
+    return;
+  }
+  rlist.innerHTML = remoteData.map(m => `
+    <div class="remote-machine">
+      <div class="remote-machine-name">💻 ${esc(m.computer)}</div>
+      <div class="remote-machine-meta">${m.count} manuals · Updated ${fmtDate(m.updated)}</div>
+    </div>
+  `).join('');
+}
+
+function renderRemoteGrid() {
+  const container = document.getElementById('catalogContainer');
+  if (!remoteData.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📡</div><h3>No remote computers found</h3><p>Configure the NAS exchange folder in Settings on both computers, then enable "Push" and "Pull".</p></div>`;
+    document.getElementById('resultCount').textContent = '0 items';
+    return;
+  }
+  let allCards = [];
+  let total = 0;
+  for (const machine of remoteData) {
+    let items = machine.manuals || [];
+    const q = searchTerm.toLowerCase();
+    if (q) items = items.filter(m => (m.title||'').toLowerCase().includes(q) || (m.tags||'').toLowerCase().includes(q) || (m.make||'').toLowerCase().includes(q) || (m.model||'').toLowerCase().includes(q) || (m.filename||'').toLowerCase().includes(q));
+    total += items.length;
+    if (items.length) {
+      allCards.push(`<div style="margin-bottom:6px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--remote)">📡 ${esc(machine.computer)} — ${items.length} manual${items.length===1?'':'s'}</div>`);
+      if (currentView === 'grid') {
+        allCards.push(`<div class="grid" style="margin-bottom:24px">${items.map(m => remoteCardHtml(m, machine.computer)).join('')}</div>`);
+      } else {
+        allCards.push(`<div class="list" style="margin-bottom:24px">${items.map(m => remoteListRowHtml(m, machine.computer)).join('')}</div>`);
+      }
+    }
+  }
+  document.getElementById('resultCount').textContent = total + ' item' + (total===1?'':'s') + ' (remote)';
+  container.innerHTML = allCards.join('');
+}
+
+function remoteCardHtml(m, computer) {
+  const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,3).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
+  const meta = [m.make, m.model, m.page_count ? m.page_count+' pp' : null].filter(Boolean).join(' · ');
+  return `
+    <div class="card remote" onclick="openRemoteDetail(${JSON.stringify(JSON.stringify(m)).slice(1,-1)}, '${esc(computer)}')">
+      <div class="card-thumb">
+        <div class="card-thumb-placeholder"><div class="type-icon" style="font-size:30px">${m.file_type==='pdf'?'📄':'🖼'}</div><div class="type-label" style="font-size:8px">REMOTE</div></div>
+        <span class="card-type-badge remote">${esc(computer.substring(0,8))}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(m.title)}</div>
+        <div class="card-meta">${meta}</div>
+        ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function remoteListRowHtml(m, computer) {
+  const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,4).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
+  const meta = [m.make, m.model].filter(Boolean).join(' · ');
+  return `
+    <div class="list-row remote" onclick="openRemoteDetail(${JSON.stringify(JSON.stringify(m)).slice(1,-1)}, '${esc(computer)}')">
+      <div class="list-thumb"><span style="font-size:28px;opacity:.3">${m.file_type==='pdf'?'📄':'🖼'}</span></div>
+      <div class="list-info">
+        <div class="list-title">📡 ${esc(m.title)}</div>
+        ${meta ? `<div class="list-subtitle">${meta}</div>` : ''}
+        <div class="list-subtitle">On: ${esc(computer)}</div>
+        ${tags ? `<div class="list-tags">${tags}</div>` : ''}
+      </div>
+      <div class="list-right">
+        <span class="list-type-badge remote">REMOTE</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${fmtSize(m.file_size)}</span>
+      </div>
+    </div>`;
+}
+
+function openRemoteDetail(mJson, computer) {
+  let m;
+  try { m = JSON.parse(mJson); } catch(e) { return; }
+  document.getElementById('remoteDetailHeader').textContent = `📡 Remote Manual — ${computer}`;
+  const meta = [
+    ['Title', m.title],
+    ['Filename', m.filename],
+    ['Type', (m.file_type||'').toUpperCase()],
+    ['Make', m.make],
+    ['Model', m.model],
+    ['Category', m.category],
+    ['Pages', m.page_count || null],
+    ['Size', fmtSize(m.file_size)],
+    ['Description', m.description],
+    ['Tags', m.tags],
+    ['Added', fmtDate(m.added_at)],
+    ['Computer', computer],
+  ].filter(([,v]) => v);
+  document.getElementById('remoteDetailBody').innerHTML = `
+    <div class="remote-detail-title">${esc(m.title)}</div>
+    <p style="font-size:12px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin-bottom:14px;background:var(--accent-bg);padding:8px 10px;border-radius:4px">
+      📁 This file lives on <strong>${esc(computer)}</strong>. It cannot be opened from here — retrieve it via LocalSend or the NAS exchange folder.
+    </p>
+    ${meta.map(([l,v]) => `<div class="remote-field"><span class="remote-field-label">${esc(l)}</span><span>${esc(String(v))}</span></div>`).join('')}
+  `;
+  document.getElementById('remoteOverlay').classList.add('open');
+}
+
+function closeRemoteDetail(e) {
+  if (!e || e.target === document.getElementById('remoteOverlay')) {
+    document.getElementById('remoteOverlay').classList.remove('open');
+  }
+}
+
+// ── Scan modal ─────────────────────────────────────────
+function openScanModal() {
+  document.getElementById('scanFolder').value = '';
+  document.getElementById('scanStatus').textContent = '';
+  document.getElementById('scanResultsWrap').style.display = 'none';
+  document.getElementById('addSelBtn').style.display = 'none';
+  scanResults = [];
+  document.getElementById('scanModal').classList.add('open');
+}
+
+function closeScanModal() {
+  document.getElementById('scanModal').classList.remove('open');
+}
+
+async function doScan() {
+  const folder = document.getElementById('scanFolder').value.trim();
+  if (!folder) { toast('Enter a folder path', 'error'); return; }
+  const btn = document.getElementById('scanBtn');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+  document.getElementById('scanStatus').textContent = 'Scanning…';
+  document.getElementById('scanResultsWrap').style.display = 'none';
+
+  try {
+    const r = await fetch('/api/scan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({folder})});
+    const d = await r.json();
+    if (d.error) { toast(d.error, 'error'); return; }
+    scanResults = d.files || [];
+    document.getElementById('scanStatus').textContent = '';
+    renderScanResults();
+  } catch(e) {
+    toast('Scan failed: ' + e.message, 'error');
+  } finally {
+    btn.innerHTML = 'Scan';
+    btn.disabled = false;
+  }
+}
+
+async function renderScanResults() {
+  const r = await fetch('/api/scan_queue');
+  const queueItems = await r.json();
+  const cataloged  = new Set(queueItems.filter(i=>i.in_catalog && !i.is_updated).map(i=>i.file_path));
+  const updated    = new Set(queueItems.filter(i=>i.is_updated).map(i=>i.file_path));
+
+  const newCount  = scanResults.filter(f => !cataloged.has(f.file_path) && !updated.has(f.file_path)).length;
+  const updCount  = scanResults.filter(f => updated.has(f.file_path)).length;
+  const skipCount = scanResults.filter(f => cataloged.has(f.file_path)).length;
+  let summary = `Found ${scanResults.length} file${scanResults.length===1?'':'s'}`;
+  if (updCount)  summary += ` · <span style="color:#d68910;font-weight:500">${updCount} updated</span>`;
+  if (newCount)  summary += ` · ${newCount} new`;
+  if (skipCount) summary += ` · ${skipCount} unchanged`;
+  document.getElementById('scanCount').innerHTML = summary;
+  document.getElementById('scanResultsWrap').style.display = 'block';
+  document.getElementById('addSelBtn').style.display = 'inline-block';
+
+  // Sort: updated first, then new, then already-in-catalog
+  const sorted = [...scanResults].sort((a, b) => {
+    const rank = f => updated.has(f.file_path) ? 0 : cataloged.has(f.file_path) ? 2 : 1;
+    return rank(a) - rank(b);
+  });
+
+  const list = document.getElementById('scanList');
+  list.innerHTML = sorted.map((f,i) => {
+    const isUpdated  = updated.has(f.file_path);
+    const isCataloged = cataloged.has(f.file_path);
+    let badgeClass, badgeLabel;
+    if (isUpdated)   { badgeClass = 'updated'; badgeLabel = 'UPDATE'; }
+    else if (isCataloged) { badgeClass = 'added';   badgeLabel = 'IN CATALOG'; }
+    else             { badgeClass = f.file_type; badgeLabel = f.file_type.toUpperCase(); }
+    const checked  = !isCataloged;   // pre-check new AND updated
+    const disabled = isCataloged && !isUpdated;
+    const dimmed   = isCataloged && !isUpdated;
+    const updateNote = isUpdated
+      ? `<div style="font-size:9px;color:#d68910;margin-top:1px">File changed — will refresh thumbnail &amp; metadata, keep your tags/title</div>`
+      : '';
+    return `<div class="scan-item ${dimmed?'in-catalog':''}">
+      <input type="checkbox" id="sc${i}" value="${esc(f.file_path)}" ${checked?'checked':''} ${disabled?'disabled':''}>
+      <span class="scan-item-badge ${badgeClass}">${badgeLabel}</span>
+      <div style="flex:1;min-width:0">
+        <div class="scan-item-name" title="${esc(f.file_path)}">${esc(f.filename)}</div>
+        <div class="scan-item-path">${esc(f.file_path)}</div>
+        ${updateNote}
+      </div>
+      <span class="scan-item-size">${fmtSize(f.file_size)}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectAllScan(val) {
+  document.querySelectorAll('#scanList input[type=checkbox]:not(:disabled)').forEach(cb => cb.checked = val);
+}
+
+async function addSelected() {
+  const paths = [...document.querySelectorAll('#scanList input[type=checkbox]:checked')].map(cb => cb.value);
+  if (!paths.length) { toast('Nothing selected', 'error'); return; }
+  const btn = document.getElementById('addSelBtn');
+  btn.innerHTML = '<span class="spinner"></span> Adding…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/add_batch', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({paths})});
+    const d = await r.json();
+    let msg = `Added ${d.added} manual${d.added===1?'':'s'}`;
+    if (d.updated) msg += ` · ${d.updated} updated`;
+    toast(msg, 'success');
+    closeScanModal();
+    loadManuals(); loadStats(); loadTags(); loadCategories();
+  } catch(e) {
+    toast('Error adding files', 'error');
+  } finally {
+    btn.innerHTML = 'Add Selected';
+    btn.disabled = false;
+  }
+}
+
+// ── Config modal ───────────────────────────────────────
+async function openConfigModal() {
+  const r = await fetch('/api/config');
+  const cfg = await r.json();
+  document.getElementById('cfgComputer').value  = cfg.computer_name || '';
+  document.getElementById('cfgExchange').value  = cfg.exchange_folder || '';
+  document.getElementById('cfgPush').checked    = cfg.manifest_push !== false;
+  document.getElementById('cfgPull').checked    = cfg.manifest_pull !== false;
+  renderSavedFolders(cfg.scan_folders || []);
+  document.getElementById('configModal').classList.add('open');
+}
+
+function closeConfigModal() {
+  document.getElementById('configModal').classList.remove('open');
+}
+
+function renderSavedFolders(folders) {
+  const list = document.getElementById('savedFoldersList');
+  list.innerHTML = folders.map((f,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
+      <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f)}</span>
+      <button class="btn" style="font-size:10px;padding:2px 8px" onclick="quickScan('${esc(f)}')">Scan</button>
+      <button class="btn" style="font-size:10px;padding:2px 8px;color:var(--accent);border-color:var(--accent)" onclick="removeSavedFolder(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function quickScan(folder) {
+  closeConfigModal();
+  document.getElementById('scanFolder').value = folder;
+  openScanModal();
+  doScan();
+}
+
+async function addSavedFolder() {
+  const inp = document.getElementById('addFolderInput');
+  const f = inp.value.trim();
+  if (!f) return;
+  const r = await fetch('/api/config');
+  const cfg = await r.json();
+  const folders = cfg.scan_folders || [];
+  if (!folders.includes(f)) folders.push(f);
+  cfg.scan_folders = folders;
+  await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg)});
+  inp.value = '';
+  renderSavedFolders(folders);
+}
+
+async function removeSavedFolder(idx) {
+  const r = await fetch('/api/config');
+  const cfg = await r.json();
+  cfg.scan_folders = (cfg.scan_folders || []).filter((_,i)=>i!==idx);
+  await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg)});
+  renderSavedFolders(cfg.scan_folders);
+}
+
+async function saveConfig() {
+  const cfg = {
+    computer_name:  document.getElementById('cfgComputer').value.trim(),
+    exchange_folder: document.getElementById('cfgExchange').value.trim(),
+    manifest_push:  document.getElementById('cfgPush').checked,
+    manifest_pull:  document.getElementById('cfgPull').checked,
+  };
+  // Preserve scan_folders
+  const r = await fetch('/api/config');
+  const existing = await r.json();
+  cfg.scan_folders = existing.scan_folders || [];
+  await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg)});
+  toast('Settings saved', 'success');
+  closeConfigModal();
+  loadRemote();
+}
+
+function closeModalOutside(e, id) {
+  if (e.target === document.getElementById(id)) document.getElementById(id).classList.remove('open');
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
