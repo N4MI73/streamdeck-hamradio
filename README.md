@@ -19,6 +19,7 @@ with assistance from [Claude AI](https://claude.ai/).
 - **Web launcher** — opens your ham radio browser tabs (QRZ, LoTW, Clublog, PSKReporter, DX Cluster) in a dedicated Chrome profile
 - **HamShackFeed** — single-file ham radio content aggregator; pulls blogs, podcasts, and YouTube channels into one searchable dashboard with favorites, read tracking, and a built-in podcast player
 - **HamShackFeed Pro** — server-powered version of HamShackFeed with SQLite persistence, direct RSS fetching (no API key needed), background refresh, and cross-device access
+- **ManualShelf** — locally-hosted PDF and image manual catalog; browse, search, tag, and open radio manuals and settings screenshots with auto-generated thumbnails; cross-computer visibility via NAS exchange folder
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 ---
@@ -72,6 +73,13 @@ streamdeck-hamradio/
 │   ├── requirements.txt                # Python dependencies
 │   ├── import_sources.py               # Migrate sources from HamShackFeed HTML version
 │   ├── StartHamShackFeedPro.ps1        # PowerShell launcher
+│   └── templates/
+│       └── index.html                  # Frontend
+├── manualshelf/
+│   ├── server.py                       # Flask server, SQLite catalog, NAS manifest
+│   ├── requirements.txt                # flask, PyMuPDF, Pillow
+│   ├── StartManualShelf.ps1            # Launcher (opens browser automatically)
+│   ├── StopManualShelf.ps1             # Stop via PID file
 │   └── templates/
 │       └── index.html                  # Frontend
 └── icons/
@@ -139,6 +147,10 @@ See the [HamShackFeed Setup](#hamshackfeed-setup) section below.
 ### 7. Set up HamShackFeed Pro
 
 See the [HamShackFeed Pro Setup](#hamshackfeed-pro-setup) section below.
+
+### 8. Set up ManualShelf
+
+See the [ManualShelf Setup](#manualshelf-setup) section below.
 
 ---
 
@@ -239,6 +251,60 @@ Find the channel URL on the channel's About page.
 
 ---
 
+## ManualShelf Setup
+
+ManualShelf (`manualshelf/`) is a locally-hosted catalog for PDF manuals and settings screenshots. It generates thumbnails from PDF first pages, supports tagging and search, and can show manuals available on another computer via a shared NAS folder.
+
+| Feature | Detail |
+|---|---|
+| Port | **8075** |
+| Supported files | PDF, PNG, JPG, GIF, BMP, WEBP |
+| Thumbnail generation | PyMuPDF (first page of PDF) |
+| Cross-computer | NAS exchange folder manifest |
+
+### Installation
+
+1. Copy the `manualshelf\` folder to `C:\Ham Scripts\`
+
+2. Install Python dependencies (run once):
+```powershell
+cd "C:\Ham Scripts\manualshelf"
+pip install -r requirements.txt
+```
+
+3. Start the server:
+```powershell
+.\StartManualShelf.ps1
+```
+
+Or run directly: `python server.py`
+
+Open `http://localhost:8075` in your browser.
+
+### First-time setup
+
+1. Click **⚙ Settings** — set your Computer Name and optionally a NAS Exchange Folder for cross-computer visibility
+2. Click **📂 Add Manuals** — paste a folder path and scan; select files to add to the catalog
+3. Thumbnails are generated automatically on add
+
+### Updating a manual
+
+When you replace a file on disk with a newer version, re-scan the folder. Changed files appear with an amber **UPDATE** badge, pre-checked. Selecting them refreshes the thumbnail and file data while preserving your title, tags, make, model, and category.
+
+### Cross-computer visibility
+
+Each running instance writes a manifest to the NAS exchange folder every 5 minutes. The other machine reads it and shows remote manuals under the **📡 Remote Manuals** sidebar filter. Clicking a remote entry shows its full metadata with a note that the file lives on the other machine and must be retrieved via LocalSend or the NAS exchange folder.
+
+### Stream Deck button
+
+```
+Executable: powershell.exe
+Arguments:  -ExecutionPolicy Bypass -File "C:\Ham Scripts\manualshelf\StartManualShelf.ps1"
+Start In:   C:\Ham Scripts\manualshelf
+```
+
+---
+
 ## Script Reference
 
 | Script | Purpose | Key Arguments |
@@ -250,7 +316,7 @@ Find the channel URL on the channel's About page.
 | `RotatorAzimuth.ps1` | Rotates antenna to any azimuth | `-az 270` (0–360) |
 | `RotatorStop.ps1` | Immediately stops antenna rotation | none |
 | `hamshackfeed_pro/server.py` | Starts HamShackFeed Pro on port 8074 | none |
-| `hamshackfeed_pro/import_sources.py` | Imports sources from HTML version | none |
+| `manualshelf/server.py` | Starts ManualShelf catalog on port 8075 | none |
 
 ---
 
