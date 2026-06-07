@@ -1864,7 +1864,7 @@ function renderSavedFolders(folders) {
   list.innerHTML = folders.map((f,i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
       <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f)}</span>
-      <button class="btn" style="font-size:10px;padding:2px 8px" onclick="quickScan('${esc(f)}')">Scan</button>
+      <button class="btn" style="font-size:10px;padding:2px 8px" data-folder="${esc(f)}" onclick="quickScan(this.dataset.folder)">Scan</button>
       <button class="btn" style="font-size:10px;padding:2px 8px;color:var(--accent);border-color:var(--accent)" onclick="removeSavedFolder(${i})">✕</button>
     </div>
   `).join('');
@@ -1872,9 +1872,9 @@ function renderSavedFolders(folders) {
 
 function quickScan(folder) {
   closeConfigModal();
-  document.getElementById('scanFolder').value = folder;
   openScanModal();
-  doScan();
+  document.getElementById('scanFolder').value = folder;
+  setTimeout(doScan, 150);
 }
 
 async function addSavedFolder() {
