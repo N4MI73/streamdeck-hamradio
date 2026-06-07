@@ -258,7 +258,9 @@ ManualShelf (`manualshelf/`) is a locally-hosted catalog for PDF manuals and set
 | Feature | Detail |
 |---|---|
 | Port | **8075** |
-| Supported files | PDF, PNG, JPG, GIF, BMP, WEBP |
+| Supported files | PDF, PNG, JPG, GIF, BMP, WEBP, DOCX, DOC, XLSX, XLS, CSV, PPTX, PPT, TXT, MD, HTML |
+| In-app preview | MD and TXT files render inside the app; all others open in default Windows app |
+| Full-text search | PDF text content is indexed and searchable via Re-index PDFs in Settings |
 | Thumbnail generation | PyMuPDF (first page of PDF) |
 | Cross-computer | NAS exchange folder manifest |
 
@@ -291,6 +293,24 @@ Open `http://localhost:8075` in your browser.
 
 When you replace a file on disk with a newer version, re-scan the folder. Changed files appear with an amber **UPDATE** badge, pre-checked. Selecting them refreshes the thumbnail and file data while preserving your title, tags, make, model, and category.
 
+### Full-text PDF search
+
+ManualShelf can search inside PDF text content, not just filenames and tags. To enable it:
+
+1. Open **⚙ Settings** and click **🔍 Re-index PDFs** — indexing runs in the background
+2. Search normally — results that matched on PDF text content show a purple **PDF TEXT** badge
+
+New PDFs are indexed automatically when added. Re-run after adding a large batch.
+
+### Bulk tag editor
+
+To apply tags or a category to multiple files at once:
+
+1. Click **☑ Select** in the toolbar to enter selection mode
+2. Click cards to select them, or use **Select All**
+3. Click **✏️ Edit Selected** and enter tags and/or a category
+4. Check **Add to existing tags** to merge with existing tags rather than replace them
+   
 ### Cross-computer visibility
 
 Each running instance writes a manifest to the NAS exchange folder every 5 minutes. The other machine reads it and shows remote manuals under the **📡 Remote Manuals** sidebar filter. Clicking a remote entry shows its full metadata with a note that the file lives on the other machine and must be retrieved via LocalSend or the NAS exchange folder.
