@@ -10,7 +10,7 @@ Cross-computer: reads/writes manifest.json to NAS exchange folder
 
 import os, json, shutil, hashlib, datetime, threading, time, subprocess, platform
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_from_directory, abort
+from flask import Flask, render_template, request, jsonify, send_from_directory, abort, Response
 import sqlite3
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -23,7 +23,23 @@ THUMB_DIR.mkdir(parents=True, exist_ok=True)
 # Supported file extensions
 PDF_EXTS   = {".pdf"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
-ALL_EXTS   = PDF_EXTS | IMAGE_EXTS
+DOC_EXTS   = {".docx", ".doc"}
+SHEET_EXTS = {".xlsx", ".xls", ".csv"}
+PPTX_EXTS  = {".pptx", ".ppt"}
+TEXT_EXTS  = {".txt", ".md"}
+HTML_EXTS  = {".html", ".htm"}
+ALL_EXTS   = PDF_EXTS | IMAGE_EXTS | DOC_EXTS | SHEET_EXTS | PPTX_EXTS | TEXT_EXTS | HTML_EXTS
+
+def ext_to_type(ext: str) -> str:
+    ext = ext.lower()
+    if ext in PDF_EXTS:    return "pdf"
+    if ext in IMAGE_EXTS:  return "image"
+    if ext in DOC_EXTS:    return "word"
+    if ext in SHEET_EXTS:  return "sheet"
+    if ext in PPTX_EXTS:   return "pptx"
+    if ext in TEXT_EXTS:   return ext.lstrip(".")
+    if ext in HTML_EXTS:   return "html"
+    return "other"
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -34,11 +50,11 @@ def load_config():
         with open(CONFIG_FILE) as f:
             return json.load(f)
     return {
-        "scan_folders": [],
+        "scan_folders":   [],
         "exchange_folder": "",
-        "computer_name": platform.node(),
-        "manifest_push": True,
-        "manifest_pull": True,
+        "computer_name":  platform.node(),
+        "manifest_push":  True,
+        "manifest_pull":  True,
     }
 
 def save_config(cfg):
@@ -84,29 +100,69 @@ def init_db():
                 in_catalog  INTEGER DEFAULT 0,
                 is_updated  INTEGER DEFAULT 0
             );
+            CREATE TABLE IF NOT EXISTS pdf_text (
+                manual_id   INTEGER PRIMARY KEY,
+                content     TEXT NOT NULL,
+                indexed_at  TEXT NOT NULL,
+                FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
+            );
         """)
 
 init_db()
 
-# ── Thumbnail generation ───────────────────────────────────────────────────────
-def make_thumb_pdf(file_path: Path, hash_id: str) -> str:
-    """Generate first-page thumbnail using PyMuPDF. Returns relative path or ''."""
+# ── Full-text PDF indexing ────────────────────────────────────────────────────
+def index_pdf_text(manual_id: int, file_path: Path):
+    """Extract all text from a PDF and store in pdf_text table."""
     try:
         import fitz
-        doc = fitz.open(str(file_path))
+        doc   = fitz.open(str(file_path))
+        parts = []
+        for page in doc:
+            text = page.get_text("text")
+            if text.strip():
+                parts.append(text)
+        doc.close()
+        content = "\n".join(parts)
+        now = datetime.datetime.now().isoformat()
+        with get_db() as db:
+            db.execute(
+                "INSERT OR REPLACE INTO pdf_text (manual_id, content, indexed_at) VALUES (?,?,?)",
+                (manual_id, content, now)
+            )
+    except Exception as e:
+        print(f"PDF text index error for {file_path}: {e}")
+
+def reindex_all_pdfs():
+    """Re-index every PDF in the catalog. Called from the Settings button."""
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT id, file_path FROM manuals WHERE file_type='pdf'"
+        ).fetchall()
+    count = 0
+    for row in rows:
+        fp = Path(row["file_path"])
+        if fp.exists():
+            index_pdf_text(row["id"], fp)
+            count += 1
+    return count
+
+# ── Thumbnail generation ───────────────────────────────────────────────────────
+def make_thumb_pdf(file_path: Path, hash_id: str) -> str:
+    try:
+        import fitz
+        doc  = fitz.open(str(file_path))
         page = doc[0]
-        mat = fitz.Matrix(1.5, 1.5)
-        pix = page.get_pixmap(matrix=mat)
-        out = THUMB_DIR / f"{hash_id}.jpg"
+        mat  = fitz.Matrix(1.5, 1.5)
+        pix  = page.get_pixmap(matrix=mat)
+        out  = THUMB_DIR / f"{hash_id}.jpg"
         pix.save(str(out))
         doc.close()
         return f"thumbs/{hash_id}.jpg"
     except Exception as e:
-        print(f"Thumb error for {file_path}: {e}")
+        print(f"PDF thumb error for {file_path}: {e}")
         return ""
 
 def make_thumb_image(file_path: Path, hash_id: str) -> str:
-    """Copy/resize image as thumbnail."""
     try:
         from PIL import Image
         img = Image.open(str(file_path))
@@ -116,6 +172,28 @@ def make_thumb_image(file_path: Path, hash_id: str) -> str:
         return f"thumbs/{hash_id}.jpg"
     except Exception as e:
         print(f"Image thumb error for {file_path}: {e}")
+        return ""
+
+def make_thumb_pptx(file_path: Path, hash_id: str) -> str:
+    try:
+        from pptx import Presentation
+        from PIL import Image, ImageDraw
+        prs      = Presentation(str(file_path))
+        emu_per_inch = 914400
+        dpi      = 96
+        w_px     = int(prs.slide_width  / emu_per_inch * dpi)
+        h_px     = int(prs.slide_height / emu_per_inch * dpi)
+        img      = Image.new("RGB", (w_px, h_px), "#1e3a5f")
+        draw     = ImageDraw.Draw(img)
+        margin   = 20
+        draw.rectangle([margin, margin, w_px-margin, h_px-margin], fill="#ffffff", outline="#cccccc", width=2)
+        draw.rectangle([margin, h_px-50, w_px-margin, h_px-margin], fill="#1e3a5f")
+        img.thumbnail((300, 400))
+        out = THUMB_DIR / f"{hash_id}.jpg"
+        img.convert("RGB").save(str(out), "JPEG", quality=85)
+        return f"thumbs/{hash_id}.jpg"
+    except Exception as e:
+        print(f"PPTX thumb error for {file_path}: {e}")
         return ""
 
 def file_hash(file_path: Path) -> str:
@@ -133,23 +211,39 @@ def get_page_count(file_path: Path) -> int:
     try:
         import fitz
         doc = fitz.open(str(file_path))
-        n = len(doc)
+        n   = len(doc)
         doc.close()
         return n
     except:
         return 0
 
+def get_slide_count(file_path: Path) -> int:
+    try:
+        from pptx import Presentation
+        return len(Presentation(str(file_path)).slides)
+    except:
+        return 0
+
+def make_thumbnail(file_path: Path, hash_id: str, ft: str) -> str:
+    if ft == "pdf":   return make_thumb_pdf(file_path, hash_id)
+    if ft == "image": return make_thumb_image(file_path, hash_id)
+    if ft == "pptx":  return make_thumb_pptx(file_path, hash_id)
+    return ""
+
+def get_count(file_path: Path, ft: str) -> int:
+    if ft == "pdf":  return get_page_count(file_path)
+    if ft == "pptx": return get_slide_count(file_path)
+    return 0
+
 # ── Folder scanning ────────────────────────────────────────────────────────────
 def scan_folder(folder_path: str) -> list:
-    """Scan a folder recursively, return list of discovered files."""
     results = []
-    folder = Path(folder_path)
+    folder  = Path(folder_path)
     if not folder.exists():
         return results
     for p in folder.rglob("*"):
         if p.suffix.lower() in ALL_EXTS and p.is_file():
-            ext = p.suffix.lower()
-            ft  = "pdf" if ext in PDF_EXTS else "image"
+            ft = ext_to_type(p.suffix)
             results.append({
                 "file_path": str(p),
                 "filename":  p.name,
@@ -158,9 +252,24 @@ def scan_folder(folder_path: str) -> list:
             })
     return results
 
+# ── Text preview ──────────────────────────────────────────────────────────────
+@app.route("/api/preview/<int:mid>")
+def api_preview(mid):
+    with get_db() as db:
+        row = db.execute("SELECT file_path, file_type FROM manuals WHERE id=?", (mid,)).fetchone()
+    if not row:
+        return "Not found", 404
+    fp = Path(row["file_path"])
+    if not fp.exists():
+        return "File not found on disk", 404
+    try:
+        text = fp.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:
+        return f"Could not read file: {e}", 500
+    return Response(text, mimetype="text/plain; charset=utf-8")
+
 # ── NAS Manifest ──────────────────────────────────────────────────────────────
 def push_manifest():
-    """Write this machine's catalog summary to the NAS exchange folder."""
     cfg = load_config()
     exc = cfg.get("exchange_folder", "").strip()
     if not exc or not cfg.get("manifest_push", True):
@@ -174,14 +283,15 @@ def push_manifest():
     computer = cfg.get("computer_name", platform.node())
     with get_db() as db:
         rows = db.execute(
-            "SELECT filename, title, description, file_type, file_size, page_count, tags, make, model, category, added_at FROM manuals ORDER BY title"
+            "SELECT filename, title, description, file_type, file_size, page_count, "
+            "tags, make, model, category, added_at FROM manuals ORDER BY title"
         ).fetchall()
     manifest = {
-        "computer":     computer,
-        "updated":      datetime.datetime.now().isoformat(),
-        "port":         PORT,
-        "count":        len(rows),
-        "manuals": [dict(r) for r in rows],
+        "computer": computer,
+        "updated":  datetime.datetime.now().isoformat(),
+        "port":     PORT,
+        "count":    len(rows),
+        "manuals":  [dict(r) for r in rows],
     }
     out = exc_path / f"manualshelf_{computer}.json"
     try:
@@ -191,9 +301,8 @@ def push_manifest():
         print(f"Manifest push error: {e}")
 
 def pull_manifests():
-    """Read other computers' manifests from the NAS exchange folder."""
-    cfg = load_config()
-    exc = cfg.get("exchange_folder", "").strip()
+    cfg      = load_config()
+    exc      = cfg.get("exchange_folder", "").strip()
     computer = cfg.get("computer_name", platform.node())
     if not exc:
         return []
@@ -212,7 +321,6 @@ def pull_manifests():
             pass
     return results
 
-# ── Background manifest push (every 5 min) ────────────────────────────────────
 def manifest_loop():
     while True:
         time.sleep(300)
@@ -241,11 +349,24 @@ def api_get_config():
 
 @app.route("/api/config", methods=["POST"])
 def api_save_config():
-    cfg = load_config()
+    cfg  = load_config()
     data = request.json
     cfg.update(data)
     save_config(cfg)
     return jsonify({"ok": True})
+
+# --- Reindex ---
+
+@app.route("/api/reindex", methods=["POST"])
+def api_reindex():
+    """Re-index all PDF text for full-text search. Run once from Settings."""
+    def run():
+        count = reindex_all_pdfs()
+        print(f"Reindex complete: {count} PDFs indexed")
+    threading.Thread(target=run, daemon=True).start()
+    with get_db() as db:
+        total = db.execute("SELECT COUNT(*) FROM manuals WHERE file_type='pdf'").fetchone()[0]
+    return jsonify({"ok": True, "queued": total})
 
 # --- Scan ---
 
@@ -255,9 +376,7 @@ def api_scan():
     if not folder or not Path(folder).exists():
         return jsonify({"error": "Folder not found"}), 400
     files = scan_folder(folder)
-
     with get_db() as db:
-        # Build map of path -> stored_hash for everything currently in catalog
         existing = {
             r[0]: r[1]
             for r in db.execute("SELECT file_path, file_hash FROM manuals").fetchall()
@@ -268,7 +387,6 @@ def api_scan():
             p        = Path(f["file_path"])
             new_hash = file_hash(p)
             in_cat   = 1 if f["file_path"] in existing else 0
-            # is_updated: path is known but the file has changed (new content/size/mtime)
             is_upd   = 1 if (f["file_path"] in existing and existing[f["file_path"]] != new_hash) else 0
             try:
                 db.execute(
@@ -279,7 +397,6 @@ def api_scan():
                 )
             except:
                 pass
-
     return jsonify({"found": len(files), "files": files})
 
 @app.route("/api/scan_queue")
@@ -292,23 +409,17 @@ def api_scan_queue():
 
 @app.route("/api/add", methods=["POST"])
 def api_add():
-    data = request.json or {}
+    data      = request.json or {}
     file_path = data.get("file_path", "").strip()
     if not file_path or not Path(file_path).exists():
         return jsonify({"error": "File not found"}), 400
     p   = Path(file_path)
-    ext = p.suffix.lower()
-    ft  = "pdf" if ext in PDF_EXTS else "image"
+    ft  = ext_to_type(p.suffix)
     hid = file_hash(p)
     now = datetime.datetime.now().isoformat()
 
-    # Generate thumbnail
-    if ft == "pdf":
-        thumb = make_thumb_pdf(p, hid)
-        pages = get_page_count(p)
-    else:
-        thumb = make_thumb_image(p, hid)
-        pages = 0
+    thumb = make_thumbnail(p, hid, ft)
+    pages = get_count(p, ft)
 
     with get_db() as db:
         existing = db.execute(
@@ -318,7 +429,6 @@ def api_add():
         ).fetchone()
 
         if existing:
-            # Same path, file has changed — refresh file data, preserve user metadata
             old_thumb = existing["thumb_path"]
             if old_thumb:
                 old_tp = THUMB_DIR / Path(old_thumb).name
@@ -330,10 +440,11 @@ def api_add():
                 (hid, p.name, p.stat().st_size, pages, thumb, now, existing["id"])
             )
             db.execute("UPDATE scan_queue SET in_catalog=1, is_updated=0 WHERE file_path=?", (str(p),))
+            if ft == "pdf":
+                index_pdf_text(existing["id"], p)
             push_manifest()
             return jsonify({"ok": True, "id": existing["id"], "updated": True})
 
-        # Brand-new entry
         title = p.stem.replace("_", " ").replace("-", " ")
         cur = db.execute(
             "INSERT OR IGNORE INTO manuals "
@@ -347,32 +458,28 @@ def api_add():
         new_id = cur.lastrowid
         db.execute("UPDATE scan_queue SET in_catalog=1, is_updated=0 WHERE file_path=?", (str(p),))
 
+    if ft == "pdf":
+        index_pdf_text(new_id, p)
     push_manifest()
     return jsonify({"ok": True, "id": new_id})
 
 @app.route("/api/add_batch", methods=["POST"])
 def api_add_batch():
-    paths  = (request.json or {}).get("paths", [])
-    added  = 0
+    paths   = (request.json or {}).get("paths", [])
+    added   = 0
     updated = 0
-    errors = []
-    now    = datetime.datetime.now().isoformat()
+    errors  = []
+    now     = datetime.datetime.now().isoformat()
 
     for fp in paths:
         p = Path(fp)
         if not p.exists():
             errors.append(fp)
             continue
-        ext = p.suffix.lower()
-        ft  = "pdf" if ext in PDF_EXTS else "image"
+        ft  = ext_to_type(p.suffix)
         hid = file_hash(p)
-
-        if ft == "pdf":
-            thumb = make_thumb_pdf(p, hid)
-            pages = get_page_count(p)
-        else:
-            thumb = make_thumb_image(p, hid)
-            pages = 0
+        thumb = make_thumbnail(p, hid, ft)
+        pages = get_count(p, ft)
 
         try:
             with get_db() as db:
@@ -381,7 +488,6 @@ def api_add_batch():
                 ).fetchone()
 
                 if existing:
-                    # Update: refresh file data, keep all user metadata intact
                     old_thumb = existing["thumb_path"]
                     if old_thumb:
                         old_tp = THUMB_DIR / Path(old_thumb).name
@@ -392,11 +498,12 @@ def api_add_batch():
                         "WHERE id=?",
                         (hid, p.name, p.stat().st_size, pages, thumb, now, existing["id"])
                     )
+                    if ft == "pdf":
+                        index_pdf_text(existing["id"], p)
                     updated += 1
                 else:
-                    # New entry
                     title = p.stem.replace("_", " ").replace("-", " ")
-                    db.execute(
+                    cur = db.execute(
                         "INSERT OR IGNORE INTO manuals "
                         "(file_hash,file_path,filename,title,description,file_type,file_size,"
                         "page_count,thumb_path,added_at,tags,make,model,category) "
@@ -404,6 +511,8 @@ def api_add_batch():
                         (hid, str(p), p.name, title, "", ft,
                          p.stat().st_size, pages, thumb, now, "", "", "", "")
                     )
+                    if ft == "pdf":
+                        index_pdf_text(cur.lastrowid, p)
                     added += 1
 
                 db.execute(
@@ -433,13 +542,36 @@ def api_manuals():
     with get_db() as db:
         rows = db.execute(f"SELECT * FROM manuals ORDER BY {sort_col} {ord_dir}").fetchall()
 
+        # Full-text search: get IDs of PDFs matching query in extracted text
+        fts_ids = set()
+        if q:
+            fts_rows = db.execute(
+                "SELECT manual_id FROM pdf_text WHERE LOWER(content) LIKE ?",
+                (f"%{q}%",)
+            ).fetchall()
+            fts_ids = {r[0] for r in fts_rows}
+
     results = []
     for r in rows:
         d = dict(r)
-        if q and q not in d["title"].lower() and q not in d["description"].lower() \
-              and q not in (d["tags"] or "").lower() and q not in (d["make"] or "").lower() \
-              and q not in (d["model"] or "").lower() and q not in d["filename"].lower():
-            continue
+        if q:
+            # Match on metadata fields OR full-text index
+            meta_match = (
+                q in d["title"].lower() or
+                q in d["description"].lower() or
+                q in (d["tags"] or "").lower() or
+                q in (d["make"] or "").lower() or
+                q in (d["model"] or "").lower() or
+                q in d["filename"].lower()
+            )
+            fts_match = d["id"] in fts_ids
+            if not meta_match and not fts_match:
+                continue
+            # Tag results that came from full-text search (UI can show indicator)
+            d["fts_match"] = fts_match and not meta_match
+        else:
+            d["fts_match"] = False
+
         if tag and tag not in (d["tags"] or "").lower():
             continue
         if cat and cat != d.get("category",""):
@@ -462,10 +594,10 @@ def api_manual_get(mid):
 
 @app.route("/api/manuals/<int:mid>", methods=["PATCH"])
 def api_manual_update(mid):
-    data = request.json or {}
+    data    = request.json or {}
     allowed = ["title","description","tags","make","model","category","favorite"]
-    sets = ", ".join(f"{k}=?" for k in data if k in allowed)
-    vals = [v for k,v in data.items() if k in allowed]
+    sets    = ", ".join(f"{k}=?" for k in data if k in allowed)
+    vals    = [v for k,v in data.items() if k in allowed]
     if not sets:
         return jsonify({"ok": True})
     with get_db() as db:
@@ -481,9 +613,48 @@ def api_manual_delete(mid):
             tp = THUMB_DIR / Path(row["thumb_path"]).name
             if tp.exists():
                 tp.unlink(missing_ok=True)
-        db.execute("DELETE FROM manuals WHERE id=?\n", (mid,))
+        db.execute("DELETE FROM manuals WHERE id=?", (mid,))
     push_manifest()
     return jsonify({"ok": True})
+
+# --- Bulk edit ---
+
+@app.route("/api/manuals/bulk", methods=["POST"])
+def api_bulk_edit():
+    """Apply tags and/or category to multiple manuals at once."""
+    data    = request.json or {}
+    ids     = data.get("ids", [])
+    tags    = data.get("tags", None)       # None = don't touch; "" = clear; "a,b" = set
+    category = data.get("category", None)  # same convention
+    append_tags = data.get("append_tags", False)  # True = merge with existing tags
+
+    if not ids:
+        return jsonify({"ok": True, "updated": 0})
+
+    updated = 0
+    with get_db() as db:
+        for mid in ids:
+            row = db.execute("SELECT tags, category FROM manuals WHERE id=?", (mid,)).fetchone()
+            if not row:
+                continue
+            sets, vals = [], []
+            if tags is not None:
+                if append_tags and row["tags"]:
+                    # Merge: combine existing + new, deduplicate
+                    existing_tags = {t.strip() for t in row["tags"].split(",") if t.strip()}
+                    new_tags      = {t.strip() for t in tags.split(",") if t.strip()}
+                    merged        = ", ".join(sorted(existing_tags | new_tags))
+                    sets.append("tags=?"); vals.append(merged)
+                else:
+                    sets.append("tags=?"); vals.append(tags)
+            if category is not None:
+                sets.append("category=?"); vals.append(category)
+            if sets:
+                db.execute(f"UPDATE manuals SET {', '.join(sets)} WHERE id=?", vals + [mid])
+                updated += 1
+
+    push_manifest()
+    return jsonify({"ok": True, "updated": updated})
 
 # --- Open file ---
 
@@ -527,15 +698,16 @@ def api_tags():
 @app.route("/api/categories")
 def api_categories():
     with get_db() as db:
-        rows = db.execute("SELECT DISTINCT category FROM manuals WHERE category != '' ORDER BY category").fetchall()
+        rows = db.execute(
+            "SELECT DISTINCT category FROM manuals WHERE category != '' ORDER BY category"
+        ).fetchall()
     return jsonify([r["category"] for r in rows])
 
 # --- Remote manifests ---
 
 @app.route("/api/remote")
 def api_remote():
-    manifests = pull_manifests()
-    return jsonify(manifests)
+    return jsonify(pull_manifests())
 
 # --- Stats ---
 
@@ -546,10 +718,14 @@ def api_stats():
         pdfs    = db.execute("SELECT COUNT(*) FROM manuals WHERE file_type='pdf'").fetchone()[0]
         images  = db.execute("SELECT COUNT(*) FROM manuals WHERE file_type='image'").fetchone()[0]
         favs    = db.execute("SELECT COUNT(*) FROM manuals WHERE favorite=1").fetchone()[0]
-        recents = db.execute("SELECT * FROM manuals WHERE last_opened!='' ORDER BY last_opened DESC LIMIT 5").fetchall()
+        indexed = db.execute("SELECT COUNT(*) FROM pdf_text").fetchone()[0]
+        recents = db.execute(
+            "SELECT * FROM manuals WHERE last_opened!='' ORDER BY last_opened DESC LIMIT 5"
+        ).fetchall()
     cfg = load_config()
     return jsonify({
         "total": total, "pdfs": pdfs, "images": images, "favorites": favs,
+        "indexed": indexed,
         "computer": cfg.get("computer_name", platform.node()),
         "recents": [dict(r) for r in recents],
     })

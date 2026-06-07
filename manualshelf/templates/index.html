@@ -791,6 +791,67 @@ body {
   margin-left: 4px;
 }
 
+/* ── Bulk selection ───────────────────────────────────── */
+.select-toolbar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #eef4fb;
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.select-toolbar.visible { display: flex; }
+.select-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent2);
+  font-weight: 500;
+}
+.card.selected { outline: 2px solid var(--accent2); outline-offset: 2px; }
+.list-row.selected { background: #eef4fb; border-color: var(--accent2); }
+.card-check, .list-check {
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 18px; height: 18px;
+  accent-color: var(--accent2);
+  cursor: pointer;
+  display: none;
+  z-index: 10;
+}
+body.select-mode .card-check,
+body.select-mode .list-check { display: block; }
+body.select-mode .card { cursor: default; }
+body.select-mode .list-row { cursor: default; }
+
+/* ── FTS match indicator ─────────────────────────────── */
+.fts-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  background: var(--md-color);
+  color: white;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* ── Remote description block ────────────────────────── */
+.remote-desc-block {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text2);
+}
+.remote-tags-block { margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 4px; }
+
 /* ── MD / Text preview pane ──────────────────────────── */
 .preview-pane {
   border-top: 1px solid var(--border);
@@ -841,9 +902,10 @@ body {
     <input type="text" id="searchInput" placeholder="Search manuals, makes, models, tags…" oninput="debounceSearch()">
   </div>
   <div class="topbar-actions">
-    <button class="btn" onclick="openScanModal()">📂 Add Manuals</button>
-    <button class="btn" onclick="openConfigModal()">⚙ Settings</button>
-    <button class="btn secondary" onclick="loadRemote()">📡 Remote</button>
+    <button class="btn" onclick="openScanModal()" title="Scan a folder on this computer and add files to your catalog">📂 Add Manuals</button>
+    <button class="btn" onclick="openConfigModal()" title="Configure computer name, NAS exchange folder, and saved scan folders">⚙ Settings</button>
+    <button class="btn secondary" onclick="loadRemote()" title="Refresh the list of manuals available on other computers via the NAS exchange folder">📡 Remote</button>
+    <button class="btn" onclick="openHelpModal()" title="Help and reference guide" style="font-weight:700;font-size:14px">?</button>
   </div>
 </div>
 
@@ -852,31 +914,31 @@ body {
   <div class="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Library</div>
-      <button class="sidebar-link active" id="nav-all" onclick="setFilter('all')">
+      <button class="sidebar-link active" id="nav-all" onclick="setFilter('all')" title="Show all files in the catalog">
         📚 All Manuals <span class="badge" id="badge-all">0</span>
       </button>
-      <button class="sidebar-link" id="nav-pdf" onclick="setFilter('pdf')">
+      <button class="sidebar-link" id="nav-pdf" onclick="setFilter('pdf')" title="Show PDF documents only">
         📄 PDFs <span class="badge" id="badge-pdf">0</span>
       </button>
-      <button class="sidebar-link" id="nav-image" onclick="setFilter('image')">
+      <button class="sidebar-link" id="nav-image" onclick="setFilter('image')" title="Show PNG, JPG, GIF, BMP, and WEBP image files">
         🖼 Screenshots <span class="badge" id="badge-img">0</span>
       </button>
-      <button class="sidebar-link" id="nav-word" onclick="setFilter('word')">
+      <button class="sidebar-link" id="nav-word" onclick="setFilter('word')" title="Show Word documents (DOCX, DOC)">
         📝 Word Docs <span class="badge" id="badge-word">0</span>
       </button>
-      <button class="sidebar-link" id="nav-sheet" onclick="setFilter('sheet')">
+      <button class="sidebar-link" id="nav-sheet" onclick="setFilter('sheet')" title="Show spreadsheet files (XLSX, XLS, CSV)">
         📊 Spreadsheets <span class="badge" id="badge-sheet">0</span>
       </button>
-      <button class="sidebar-link" id="nav-pptx" onclick="setFilter('pptx')">
+      <button class="sidebar-link" id="nav-pptx" onclick="setFilter('pptx')" title="Show PowerPoint presentation files (PPTX, PPT)">
         📑 Presentations <span class="badge" id="badge-pptx">0</span>
       </button>
-      <button class="sidebar-link" id="nav-text" onclick="setFilter('text')">
+      <button class="sidebar-link" id="nav-text" onclick="setFilter('text')" title="Show plain text, Markdown, and HTML files — Markdown and TXT files have an in-app preview">
         🗒 Text / Markdown <span class="badge" id="badge-text">0</span>
       </button>
-      <button class="sidebar-link" id="nav-fav" onclick="setFilter('fav')">
+      <button class="sidebar-link" id="nav-fav" onclick="setFilter('fav')" title="Show files you have starred as favorites">
         ⭐ Favorites <span class="badge" id="badge-fav">0</span>
       </button>
-      <button class="sidebar-link" id="nav-remote" onclick="setFilter('remote')">
+      <button class="sidebar-link" id="nav-remote" onclick="setFilter('remote')" title="Show manuals cataloged on other computers — view details only, files cannot be opened remotely">
         📡 Remote Manuals <span id="remote-badge-count" class="remote-badge-count" style="display:none">0</span>
       </button>
     </div>
@@ -897,6 +959,14 @@ body {
   <!-- Content -->
   <div class="content">
     <div class="stats-bar" id="statsBar"></div>
+
+    <!-- Select toolbar — visible in selection mode -->
+    <div class="select-toolbar" id="selectToolbar">
+      <span class="select-count" id="selectCount">0 selected</span>
+      <button class="btn secondary" onclick="openBulkModal()">✏️ Edit Selected</button>
+      <button class="btn" onclick="selectAll()">Select All</button>
+      <button class="btn" onclick="exitSelectMode()">✕ Cancel</button>
+    </div>
     <div class="toolbar">
       <select class="filter-select" id="catFilter" onchange="loadManuals()">
         <option value="">All Categories</option>
@@ -913,9 +983,10 @@ body {
         <option value="desc">Z → A</option>
       </select>
       <span class="result-count" id="resultCount">— items</span>
+      <button class="btn" id="btnSelectMode" onclick="enterSelectMode()" title="Enter selection mode to bulk-edit tags and categories across multiple files at once">☑ Select</button>
       <div class="view-toggle">
-        <button class="view-btn active" id="btnGrid" onclick="setView('grid')" title="Grid">⊞</button>
-        <button class="view-btn" id="btnList" onclick="setView('list')" title="List">≡</button>
+        <button class="view-btn active" id="btnGrid" onclick="setView('grid')" title="Grid view">⊞</button>
+        <button class="view-btn" id="btnList" onclick="setView('list')" title="List view">≡</button>
       </div>
     </div>
     <div id="catalogContainer"></div>
@@ -1038,6 +1109,8 @@ body {
       </div>
     </div>
     <div class="modal-footer">
+      <button class="btn" onclick="reindexPDFs()" id="reindexBtn" title="Extract text from all PDFs for full-text search. Run once after installing, then again whenever you add new PDFs.">🔍 Re-index PDFs</button>
+      <button class="btn" onclick="closeConfigModal();openHelpModal()" title="Open the help and reference guide">? Help</button>
       <button class="btn" onclick="closeConfigModal()">Cancel</button>
       <button class="btn primary" onclick="saveConfig()">Save Settings</button>
     </div>
@@ -1046,17 +1119,141 @@ body {
 
 <div class="toast" id="toast"></div>
 
+<!-- Bulk Edit Modal -->
+<div class="modal-overlay" id="bulkModal" onclick="closeModalOutside(event,'bulkModal')">
+  <div class="modal" style="max-width:460px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Bulk Edit</span>
+      <button class="modal-close" onclick="document.getElementById('bulkModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px" id="bulkModalDesc">Editing selected manuals.</p>
+      <div class="detail-field" style="margin-bottom:16px">
+        <label>Category — leave blank to keep existing</label>
+        <input type="text" id="bulkCategory" placeholder="e.g. Transceiver, Software">
+      </div>
+      <div class="detail-field" style="margin-bottom:8px">
+        <label>Tags — leave blank to keep existing</label>
+        <input type="text" id="bulkTags" placeholder="e.g. HF, Icom, reference">
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-top:8px">
+        <input type="checkbox" id="bulkAppend"> Add to existing tags (instead of replacing)
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('bulkModal').classList.remove('open')">Cancel</button>
+      <button class="btn primary" onclick="applyBulkEdit()">Apply to Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpModal" onclick="closeModalOutside(event,'helpModal')">
+  <div class="modal" style="max-width:740px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">? ManualShelf — Help &amp; Reference</span>
+      <button class="modal-close" onclick="document.getElementById('helpModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px;line-height:1.7;color:var(--text2)">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+        <!-- Left column -->
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:8px">Getting Started</div>
+          <p style="margin-bottom:8px">ManualShelf catalogs files on your computer so you can find and open them quickly. Files stay where they are — ManualShelf only stores metadata and thumbnails.</p>
+          <ol style="padding-left:18px;margin-bottom:12px">
+            <li style="margin-bottom:4px">Click <strong>📂 Add Manuals</strong> in the top bar</li>
+            <li style="margin-bottom:4px">Paste a folder path and click <strong>Scan</strong></li>
+            <li style="margin-bottom:4px">Check the files you want to add</li>
+            <li style="margin-bottom:4px">Click <strong>Add Selected</strong> — thumbnails generate automatically</li>
+            <li>Click any card to open the detail panel and edit metadata</li>
+          </ol>
+
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:8px">Searching</div>
+          <p style="margin-bottom:6px">The search box matches against title, filename, make, model, description, and tags simultaneously.</p>
+          <p style="margin-bottom:12px">For PDFs, search also looks inside the document text if you have run <strong>Re-index PDFs</strong> in Settings. Results that matched on text content show a <span style="background:var(--md-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">PDF TEXT</span> badge.</p>
+
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:8px">Bulk Editing</div>
+          <p style="margin-bottom:6px">To apply tags or a category to many files at once:</p>
+          <ol style="padding-left:18px;margin-bottom:12px">
+            <li style="margin-bottom:4px">Click <strong>☑ Select</strong> in the toolbar</li>
+            <li style="margin-bottom:4px">Click cards to select them, or <strong>Select All</strong></li>
+            <li style="margin-bottom:4px">Click <strong>✏️ Edit Selected</strong></li>
+            <li>Enter tags and/or a category — check <em>Add to existing tags</em> to merge rather than replace</li>
+          </ol>
+
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:8px">Updating a Manual</div>
+          <p>When you replace a file on disk with a newer version, re-scan the same folder. Changed files show an amber <span style="background:#d68910;color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">UPDATE</span> badge and are pre-checked. Selecting them refreshes the thumbnail and file data while keeping all your metadata (title, tags, category, etc.).</p>
+        </div>
+
+        <!-- Right column -->
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:8px">Supported File Types</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px">
+            <thead><tr style="background:var(--surface2)">
+              <th style="text-align:left;padding:4px 8px;border:1px solid var(--border);font-family:'Syne',sans-serif">Type</th>
+              <th style="text-align:left;padding:4px 8px;border:1px solid var(--border);font-family:'Syne',sans-serif">Extensions</th>
+              <th style="text-align:left;padding:4px 8px;border:1px solid var(--border);font-family:'Syne',sans-serif">Thumbnail</th>
+              <th style="text-align:left;padding:4px 8px;border:1px solid var(--border);font-family:'Syne',sans-serif">Preview</th>
+            </tr></thead>
+            <tbody>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--pdf-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">PDF</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.pdf</td><td style="padding:4px 8px;border:1px solid var(--border)">First page</td><td style="padding:4px 8px;border:1px solid var(--border)">Opens in default app</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--img-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">IMAGE</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.png .jpg .gif .bmp .webp</td><td style="padding:4px 8px;border:1px solid var(--border)">Resized copy</td><td style="padding:4px 8px;border:1px solid var(--border)">Opens in default app</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--word-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">WORD</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.docx .doc</td><td style="padding:4px 8px;border:1px solid var(--border)">—</td><td style="padding:4px 8px;border:1px solid var(--border)">Opens in Word</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--sheet-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">SHEET</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.xlsx .xls .csv</td><td style="padding:4px 8px;border:1px solid var(--border)">—</td><td style="padding:4px 8px;border:1px solid var(--border)">Opens in Excel</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--pptx-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">PPTX</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.pptx .ppt</td><td style="padding:4px 8px;border:1px solid var(--border)">Slide placeholder</td><td style="padding:4px 8px;border:1px solid var(--border)">Opens in PowerPoint</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--md-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">MD</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.md</td><td style="padding:4px 8px;border:1px solid var(--border)">—</td><td style="padding:4px 8px;border:1px solid var(--border)">Rendered in-app</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--txt-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">TXT</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.txt</td><td style="padding:4px 8px;border:1px solid var(--border)">—</td><td style="padding:4px 8px;border:1px solid var(--border)">Rendered in-app</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--border)"><span style="background:var(--html-color);color:white;font-family:'JetBrains Mono',monospace;font-size:9px;padding:1px 5px;border-radius:2px">HTML</span></td><td style="padding:4px 8px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace">.html .htm</td><td style="padding:4px 8px;border:1px solid var(--border)">—</td><td style="padding:4px 8px;border:1px solid var(--border)">Opens in browser</td></tr>
+            </tbody>
+          </table>
+
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:8px">Full-Text PDF Search</div>
+          <p style="margin-bottom:6px">ManualShelf can search inside PDF text, not just filenames and tags.</p>
+          <ol style="padding-left:18px;margin-bottom:12px">
+            <li style="margin-bottom:4px">Open <strong>⚙ Settings</strong> and click <strong>🔍 Re-index PDFs</strong></li>
+            <li>Indexing runs in the background — no need to wait</li>
+          </ol>
+          <p>New PDFs are indexed automatically when added. Re-run after adding a large batch.</p>
+
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin:14px 0 8px">Cross-Computer Setup</div>
+          <p style="margin-bottom:6px">To see each other's catalogs across two computers:</p>
+          <ol style="padding-left:18px;margin-bottom:6px">
+            <li style="margin-bottom:4px">On each computer, open <strong>⚙ Settings</strong></li>
+            <li style="margin-bottom:4px">Set a unique <strong>Computer Name</strong></li>
+            <li style="margin-bottom:4px">Set the same <strong>NAS Exchange Folder</strong> path on both</li>
+            <li>Check both <em>Push</em> and <em>Pull</em>, then save</li>
+          </ol>
+          <p>Each computer updates the exchange folder every 5 minutes. Remote manuals appear under <strong>📡 Remote Manuals</strong> in the sidebar — click any to see its full description, tags, and metadata.</p>
+        </div>
+
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:14px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">
+        ManualShelf — built for N4MI by Dan Marshall with Claude AI &nbsp;·&nbsp; github.com/N4MI73/streamdeck-hamradio &nbsp;·&nbsp; Port 8075
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn primary" onclick="document.getElementById('helpModal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── State ──────────────────────────────────────────────
-let currentView   = 'grid';
-let activeFilter  = 'all';
-let activeTag     = '';
+let currentView    = 'grid';
+let activeFilter   = 'all';
+let activeTag      = '';
 let activeCategory = '';
-let searchTerm    = '';
-let currentManual = null;
-let remoteData    = [];
-let scanResults   = [];
-let searchTimer   = null;
+let searchTerm     = '';
+let currentManual  = null;
+let remoteData     = [];
+let scanResults    = [];
+let searchTimer    = null;
+let selectMode     = false;
+let selectedIds    = new Set();
 
 // ── File type helpers ──────────────────────────────────
 const TYPE_ICON = {
@@ -1213,16 +1410,19 @@ function cardHtml(m) {
   const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,3).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
   const countLabel = m.file_type === 'pptx' ? (m.page_count ? m.page_count+' slides' : null)
                    : m.file_type === 'pdf'  ? (m.page_count ? m.page_count+' pp' : null) : null;
-  const meta = [m.make, m.model, countLabel, fmtSize(m.file_size)].filter(Boolean).join(' · ');
+  const meta    = [m.make, m.model, countLabel, fmtSize(m.file_size)].filter(Boolean).join(' · ');
+  const ftsBadge = m.fts_match ? `<span class="fts-badge">PDF TEXT</span>` : '';
+  const checked  = selectedIds.has(m.id) ? 'checked' : '';
   return `
-    <div class="card" onclick="openDetail(${m.id})">
+    <div class="card ${selectedIds.has(m.id)?'selected':''}" id="card-${m.id}" onclick="cardClick(event,${m.id})">
+      <input type="checkbox" class="card-check" ${checked} onclick="toggleSelect(event,${m.id})">
       <div class="card-thumb">
         ${thumb}
         ${m.favorite ? '<span class="card-fav-badge">⭐</span>' : ''}
         <span class="card-type-badge ${m.file_type}">${typeLabel(m.file_type)}</span>
       </div>
       <div class="card-body">
-        <div class="card-title">${esc(m.title)}</div>
+        <div class="card-title">${esc(m.title)}${ftsBadge}</div>
         <div class="card-meta">${meta}</div>
         ${m.description ? `<div class="card-desc">${esc(m.description)}</div>` : ''}
         ${tags ? `<div class="card-tags">${tags}</div>` : ''}
@@ -1234,13 +1434,15 @@ function listRowHtml(m) {
   const thumb = m.thumb_path
     ? `<img src="/static/${m.thumb_path}" alt="" loading="lazy">`
     : `<span style="font-size:28px;opacity:.4">${typeIcon(m.file_type)}</span>`;
-  const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,4).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
-  const meta = [m.make, m.model].filter(Boolean).join(' · ');
+  const tags    = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,4).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
+  const meta    = [m.make, m.model].filter(Boolean).join(' · ');
+  const ftsBadge = m.fts_match ? `<span class="fts-badge">PDF TEXT</span>` : '';
   return `
-    <div class="list-row" onclick="openDetail(${m.id})">
+    <div class="list-row ${selectedIds.has(m.id)?'selected':''}" id="card-${m.id}" onclick="cardClick(event,${m.id})" style="position:relative">
+      <input type="checkbox" class="list-check" ${selectedIds.has(m.id)?'checked':''} onclick="toggleSelect(event,${m.id})" style="flex-shrink:0">
       <div class="list-thumb">${thumb}</div>
       <div class="list-info">
-        <div class="list-title">${m.favorite?'⭐ ':''}${esc(m.title)}</div>
+        <div class="list-title">${m.favorite?'⭐ ':''}${esc(m.title)}${ftsBadge}</div>
         ${meta ? `<div class="list-subtitle">${meta}</div>` : ''}
         ${m.description ? `<div class="list-desc">${esc(m.description)}</div>` : ''}
         ${tags ? `<div class="list-tags">${tags}</div>` : ''}
@@ -1487,24 +1689,34 @@ function openRemoteDetail(mJson, computer) {
   let m;
   try { m = JSON.parse(mJson); } catch(e) { return; }
   document.getElementById('remoteDetailHeader').textContent = `📡 Remote Manual — ${computer}`;
+
+  const descHtml = m.description
+    ? `<div class="remote-desc-block">${esc(m.description)}</div>`
+    : '';
+
+  const tagsHtml = (m.tags||'').split(',').filter(t=>t.trim()).length
+    ? `<div class="remote-tags-block">${(m.tags||'').split(',').filter(t=>t.trim()).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('')}</div>`
+    : '';
+
   const meta = [
-    ['Title', m.title],
+    ['Type',     (m.file_type||'').toUpperCase()],
     ['Filename', m.filename],
-    ['Type', (m.file_type||'').toUpperCase()],
-    ['Make', m.make],
-    ['Model', m.model],
+    ['Make',     m.make],
+    ['Model',    m.model],
     ['Category', m.category],
-    ['Pages', m.page_count || null],
-    ['Size', fmtSize(m.file_size)],
-    ['Description', m.description],
-    ['Tags', m.tags],
-    ['Added', fmtDate(m.added_at)],
+    ['Pages',    m.file_type==='pdf' ? m.page_count : null],
+    ['Slides',   m.file_type==='pptx' ? m.page_count : null],
+    ['Size',     fmtSize(m.file_size)],
+    ['Added',    fmtDate(m.added_at)],
     ['Computer', computer],
   ].filter(([,v]) => v);
+
   document.getElementById('remoteDetailBody').innerHTML = `
     <div class="remote-detail-title">${esc(m.title)}</div>
-    <p style="font-size:12px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin-bottom:14px;background:var(--accent-bg);padding:8px 10px;border-radius:4px">
-      📁 This file lives on <strong>${esc(computer)}</strong>. It cannot be opened from here — retrieve it via LocalSend or the NAS exchange folder.
+    ${descHtml}
+    ${tagsHtml}
+    <p style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin-bottom:14px;background:var(--accent-bg);padding:7px 10px;border-radius:4px">
+      📁 Lives on <strong>${esc(computer)}</strong> — retrieve via LocalSend or NAS exchange folder
     </p>
     ${meta.map(([l,v]) => `<div class="remote-field"><span class="remote-field-label">${esc(l)}</span><span>${esc(String(v))}</span></div>`).join('')}
   `;
@@ -1712,6 +1924,122 @@ function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+// ── Selection mode ──────────────────────────────────────
+function enterSelectMode() {
+  selectMode = true;
+  selectedIds.clear();
+  document.body.classList.add('select-mode');
+  document.getElementById('selectToolbar').classList.add('visible');
+  document.getElementById('btnSelectMode').style.display = 'none';
+  updateSelectCount();
+}
+
+function exitSelectMode() {
+  selectMode = false;
+  selectedIds.clear();
+  document.body.classList.remove('select-mode');
+  document.getElementById('selectToolbar').classList.remove('visible');
+  document.getElementById('btnSelectMode').style.display = '';
+  loadManuals();
+}
+
+function toggleSelect(e, id) {
+  e.stopPropagation();
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('selected', selectedIds.has(id));
+  updateSelectCount();
+}
+
+function cardClick(e, id) {
+  if (selectMode) {
+    toggleSelect(e, id);
+  } else {
+    openDetail(id);
+  }
+}
+
+function selectAll() {
+  document.querySelectorAll('.card, .list-row').forEach(el => {
+    const id = parseInt(el.id.replace('card-',''));
+    if (!isNaN(id)) {
+      selectedIds.add(id);
+      el.classList.add('selected');
+      const cb = el.querySelector('.card-check, .list-check');
+      if (cb) cb.checked = true;
+    }
+  });
+  updateSelectCount();
+}
+
+function updateSelectCount() {
+  document.getElementById('selectCount').textContent =
+    `${selectedIds.size} selected`;
+}
+
+// ── Bulk edit ───────────────────────────────────────────
+function openBulkModal() {
+  if (!selectedIds.size) { toast('Nothing selected', 'error'); return; }
+  document.getElementById('bulkModalDesc').textContent =
+    `Editing ${selectedIds.size} manual${selectedIds.size===1?'':'s'}.`;
+  document.getElementById('bulkCategory').value = '';
+  document.getElementById('bulkTags').value     = '';
+  document.getElementById('bulkAppend').checked = true;
+  document.getElementById('bulkModal').classList.add('open');
+}
+
+async function applyBulkEdit() {
+  const category    = document.getElementById('bulkCategory').value.trim();
+  const tags        = document.getElementById('bulkTags').value.trim();
+  const appendTags  = document.getElementById('bulkAppend').checked;
+
+  if (!category && !tags) {
+    toast('Enter a category or tags to apply', 'error');
+    return;
+  }
+
+  const payload = {
+    ids:         [...selectedIds],
+    append_tags: appendTags,
+  };
+  if (category) payload.category    = category;
+  if (tags)     payload.tags        = tags;
+
+  const r = await fetch('/api/manuals/bulk', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  document.getElementById('bulkModal').classList.remove('open');
+  toast(`Updated ${d.updated} manual${d.updated===1?'':'s'}`, 'success');
+  exitSelectMode();
+  loadTags(); loadCategories();
+}
+
+// ── Re-index PDFs ───────────────────────────────────────
+async function reindexPDFs() {
+  const btn = document.getElementById('reindexBtn');
+  btn.innerHTML = '<span class="spinner"></span> Indexing…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/reindex', {method:'POST'});
+    const d = await r.json();
+    toast(`Re-indexing ${d.queued} PDFs in background…`, 'success');
+  } catch(e) {
+    toast('Reindex failed', 'error');
+  } finally {
+    setTimeout(() => { btn.innerHTML = '🔍 Re-index PDFs'; btn.disabled = false; }, 2000);
+  }
+}
+
+// ── Help modal ──────────────────────────────────────────
+function openHelpModal() {
+  document.getElementById('helpModal').classList.add('open');
+}
+
 </script>
 </body>
 </html>
