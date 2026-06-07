@@ -375,8 +375,10 @@ Full writeups with setup instructions, screenshots, and explanations at **[n4mi.
 1. Stream Deck Basics — Mode Launchers & PowerShell Scripts
 2. The Personal Operating Portal — Propagation Dashboard
 3. Rotator Control from the Stream Deck
-4. Custom Icons, Getting Started & Closing Thoughts
-5. HamShackFeed — Ham Radio Content Aggregator
+4. HamshackFeed — Lightweight Aggregator for ham radio blogs, podcasts and YouTube channels
+5. Custom Icons, Getting Started & Closing Thoughts
+6. HamShackFeedPro — Upgraded ham radio content aggregator
+7. ManualShelf — A locally-hosted PDF and document catalog
 
 ---
 
