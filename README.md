@@ -23,7 +23,7 @@ with assistance from [Claude AI](https://claude.ai/).
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 ---
-### Before You Download
+## Before You Download
 - These projects were developed for my personal ham radio station and computing environment.
 - Many components contain settings, file paths, hardware references, API keys, COM ports, network addresses, and other configuration details specific to my station.
 - Think of these projects as examples and starting points rather than turnkey applications.
