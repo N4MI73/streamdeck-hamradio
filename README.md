@@ -23,6 +23,13 @@ with assistance from [Claude AI](https://claude.ai/).
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 ---
+### Before You Download
+- These projects were developed for my personal ham radio station and computing environment.
+- Many components contain settings, file paths, hardware references, API keys, COM ports, network addresses, and other configuration details specific to my station.
+- Think of these projects as examples and starting points rather than turnkey applications.
+- Most users should expect to customize the software for their own station, operating style, and computer environment.
+- The good news is that modern AI assistants such as Claude, ChatGPT, Gemini, or similar tools can often help adapt these projects to your specific needs much faster than building them from scratch.
+- If you are comfortable experimenting and customizing, you may find these projects useful as a foundation for your own shack tools.
 
 ## Requirements
 
