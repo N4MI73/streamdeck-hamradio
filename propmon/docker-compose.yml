@@ -1,0 +1,27 @@
+# PropMon Service — docker-compose.yml
+#
+# Deployed via Portainer: Stacks -> Add Stack -> Repository
+#   Repository URL:       github.com/N4MI73/streamdeck-hamradio
+#   Repository reference: refs/heads/main
+#   Compose path:         propmon/docker-compose.yml
+#
+# pull_policy: build is required so that clicking "Update the stack" in
+# Portainer after editing propmon_server.py on GitHub actually rebuilds the
+# image from the new source, instead of silently reusing a cached image.
+# (Per Portainer's own documentation for standalone Docker environments.)
+
+services:
+  propmon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: build
+    container_name: propmon
+    restart: unless-stopped
+    ports:
+      - "8076:8076"
+    environment:
+      # Fill in with your actual Tempest API token after deploying.
+      # Without it, solar/band data still works fine -- only the
+      # tower/weather alert portion will be unavailable.
+      - TEMPEST_TOKEN=e94508e6-71ad-4b27-9f06-3fd0e05e33a8
