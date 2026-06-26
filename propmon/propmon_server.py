@@ -221,7 +221,7 @@ def fetch_hamqsl():
         "k_index": _text("kindex", int),
         "sunspots": _text("sunspots", int),
         "xray": _text("xray", str),
-        "solar_wind": _text("solarwind", int),
+        "solar_wind": _text("solarwind", float),
     }
 
 
