@@ -24,4 +24,4 @@ services:
       # Fill in with your actual Tempest API token after deploying.
       # Without it, solar/band data still works fine -- only the
       # tower/weather alert portion will be unavailable.
-      - TEMPEST_TOKEN=e94508e6-71ad-4b27-9f06-3fd0e05e33a8
+      - TEMPEST_TOKEN=
