@@ -33,9 +33,12 @@ import os
 import threading
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from xml.etree import ElementTree
 
 import requests
+from astral import LocationInfo
+from astral.sun import sun
 from flask import Flask, jsonify
 
 # ---------------------------------------------------------------------------
@@ -75,44 +78,76 @@ HTTP_TIMEOUT_SEC = 10
 
 PORT = 8076
 
-# ---------------------------------------------------------------------------
-# Band rating thresholds
-# ---------------------------------------------------------------------------
-# Ported from dashboard_server.py's JS rateBand()/getTimeOfDay() logic.
-# Extended from 8 bands to the PDF brief's 10 bands by adding 160m (below
-# 80m's thresholds) and 30m (between 40m and 20m's thresholds), following
-# the same pattern as neighboring bands. Rating scale stays 3-level
-# (good/fair/poor) per the brief's deliberate v1 simplification -- the PDF's
-# 5-level example (Poor/Fair/Good/Excellent/Closed) is not used here.
+# EM83 station location -- used only for real sunrise/sunset/civil-twilight
+# calculation (see LOW_BANDS section below). Approximate coordinates for
+# Grovetown, GA. Not tied to the Tempest station or NWS zone configs above;
+# those are separate identifiers for separate APIs describing the same
+# physical location.
+EM83_TZ = ZoneInfo("America/New_York")
+EM83_LOCATION = LocationInfo("Grovetown", "USA", "America/New_York", 33.45, -82.19)
 
 # ---------------------------------------------------------------------------
 # Band rating thresholds
 # ---------------------------------------------------------------------------
 # Ported exactly from N4MI_PropagationDashboard.html's rateBand()/
 # getTimeOfDay() JS (verbatim model, not re-derived). The dashboard's model
-# is 8 bands (80m-6m) -- it does NOT include 160m or 30m. The PDF brief's
-# worked example listed 10 bands including those two, so per the brief
-# we add 160m (below 80m's thresholds, night-only band, closed day/dawn/dusk
-# the same way the dashboard already closes 6m at night) and 30m (between
-# 40m and 20m's thresholds, following the same night/dawn/day/dusk pattern
-# as its neighbors). These two additions are new tuning, not verbatim ports,
-# and are flagged in the project brief's backlog as a v1 simplification to
-# revisit if they feel off in practice.
+# is 8 bands (80m-6m). The PDF brief's worked example listed 10 bands
+# including 160m and 30m, so per the brief we added 160m (below 80m's
+# thresholds) and 30m (between 40m and 20m's thresholds), following the
+# same pattern as neighboring bands. These two additions are new threshold
+# tuning, not verbatim ports -- the *threshold numbers* were interpolated
+# from neighboring bands, not the time-of-day logic itself.
 #
 # Model: geomagnetic penalty multiplies SFI itself (not a hard per-band
 # K-index cutoff): kIdx<=2 -> 1.0x, kIdx<=4 -> 0.65x, else -> 0.25x.
 # score = sfi * geo_penalty; band is "good" if score >= goodThresh,
 # "fair" if score >= fairThresh, else "poor".
+#
+# --- 160m/80m time-of-day fix (2026-07-15/16) ---
+# get_time_of_day() below uses fixed UTC-hour buckets, shared verbatim with
+# the dashboard's JS. For most bands this is fine -- their day/dusk/night
+# thresholds differ gradually, so a seasonal mismatch between the fixed
+# clock and real sunset only nudges the rating slightly. 160m and 80m are
+# different: both have a fully-closed "day" ([999, 999], impossible to
+# reach) followed by a wide-open "night"/"dusk" threshold, a near-binary
+# jump. Combined with the fixed clock's several-hour seasonal drift against
+# real sunset (see propmon_160m_timeofday_issue.md), this produced a real
+# bug: 160m rated GOOD during full daylight on 2026-07-15, 90+ minutes
+# before actual sunset.
+#
+# Fix: 160m and 80m no longer use get_time_of_day()/the dusk+dawn buckets
+# at all. They use get_low_band_tod() instead, which computes real civil
+# dusk/dawn for EM83 (via the `astral` library) and returns a simple
+# "day"/"night" state -- closed until it's genuinely dark, open once it
+# is, confirmed against Dan's own on-air experience (160m/80m need to be
+# genuinely dark, not just dusk, before they reliably open). Per Dan's
+# direction, both bands share this identical logic rather than having
+# separate offsets/ramps for each -- the difference between them wasn't
+# judged large enough to justify separate models. Their "dawn"/"dusk"
+# threshold entries below are removed since they're no longer looked up;
+# only "day" and "night" are used for these two bands now.
+#
+# 30m was not reported as broken and is NOT touched by this fix -- it
+# still uses the standard fixed-clock get_time_of_day(), same as the other
+# 7 unaffected bands. Worth a look later per the original handoff note if
+# it ever shows a similar symptom.
+#
+# Deliberately NOT included: any atmospheric-noise/QRN modeling for
+# summer static on 160m/80m/40m. Dan already knows to expect that
+# seasonally; PropMon's job is ionospheric band condition only.
 
 BAND_ORDER = ["160m", "80m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m"]
 
+# Bands that use real sunrise/sunset (get_low_band_tod) instead of the
+# fixed-clock get_time_of_day(). See fix notes above.
+LOW_BANDS = {"160m", "80m"}
+
 # { band: { tod: [fairThresh, goodThresh] } }
 BAND_MODELS = {
-    # New addition (not in dashboard) -- below 80m's thresholds, closed
-    # outside of night per the brief's example showing 160m as a
-    # night-band-only entry, mirroring how 6m is closed outside of day.
-    "160m": {"night": [60, 80], "dawn": [999, 999], "day": [999, 999], "dusk": [70, 100]},
-    "80m":  {"night": [70, 90],  "dawn": [80, 110],  "day": [999, 999], "dusk": [80, 110]},
+    # 160m and 80m only use "day" and "night" now -- see fix notes above.
+    # Threshold values themselves are unchanged from before the fix.
+    "160m": {"day": [999, 999], "night": [60, 80]},
+    "80m":  {"day": [999, 999], "night": [70, 90]},
     "40m":  {"night": [70, 90],  "dawn": [75, 95],   "day": [130, 160], "dusk": [75, 95]},
     # New addition (not in dashboard) -- interpolated between 40m and 20m's
     # thresholds at every time of day, following the same pattern as its
@@ -137,7 +172,8 @@ def get_geo_penalty(k_index: float) -> float:
     else:
         return 0.25
 
-# EM83-tuned time-of-day boundaries (UTC hour)
+# EM83-tuned time-of-day boundaries (UTC hour) -- used for every band
+# EXCEPT 160m and 80m (see get_low_band_tod below).
 def get_time_of_day(utc_hour: int) -> str:
     """Mirrors dashboard_server.py's getTimeOfDay(): day 12-22 UTC,
     dusk 22-1, night 1-11, dawn 11-12."""
@@ -149,6 +185,30 @@ def get_time_of_day(utc_hour: int) -> str:
         return "night"
     else:  # 11 <= utc_hour < 12
         return "dawn"
+
+
+def get_low_band_tod(now_utc: datetime) -> str:
+    """Real-sun-anchored day/night state for 160m and 80m, replacing the
+    fixed-clock get_time_of_day() for these two bands only (see fix notes
+    above BAND_MODELS). Returns "night" once civil dusk has ended for
+    today's date in EM83 (Grovetown, GA), through to civil dawn the next
+    morning; "day" otherwise.
+
+    Civil dusk/dawn (sun 6 degrees below horizon) rather than sunset/
+    sunrise themselves: cross-checked against Dan's own stated on-air
+    experience (160m/80m need to be genuinely dark, not just dusk, before
+    they reliably open) -- civil dusk end lines up with his reported
+    "160m starts opening ~1800 EDT in winter, ~2100 EDT in summer" to
+    within about 10 minutes at both extremes.
+
+    Uses `astral` (pure-Python, no external API call) so this has no
+    additional runtime dependency risk beyond the package itself.
+    """
+    local_now = now_utc.astimezone(EM83_TZ)
+    s = sun(EM83_LOCATION.observer, date=local_now.date(), tzinfo=EM83_TZ)
+    if local_now < s["dawn"] or local_now >= s["dusk"]:
+        return "night"
+    return "day"
 
 
 def rate_band(sfi: float, k_index: float, band: str, tod: str) -> str:
@@ -261,10 +321,14 @@ def build_bands_and_summary(solar: dict):
         bands = [{"band": b, "status": "poor"} for b in BAND_ORDER]
         return bands, "Data unavailable"
 
-    utc_hour = datetime.now(timezone.utc).hour
-    tod = get_time_of_day(utc_hour)
+    now_utc = datetime.now(timezone.utc)
+    standard_tod = get_time_of_day(now_utc.hour)
+    low_band_tod = get_low_band_tod(now_utc)
 
-    bands = [{"band": b, "status": rate_band(sfi, k_index, b, tod)} for b in BAND_ORDER]
+    bands = []
+    for b in BAND_ORDER:
+        tod = low_band_tod if b in LOW_BANDS else standard_tod
+        bands.append({"band": b, "status": rate_band(sfi, k_index, b, tod)})
 
     groups = {"good": [], "fair": [], "poor": []}
     for b in bands:
