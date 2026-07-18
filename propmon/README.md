@@ -104,7 +104,7 @@ PropMon's job is ionospheric band condition only.
 
 ## Related Projects
 
-**[N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments)** — an
+**[N4MI Propagation Monitor](https://github.com/N4MI73/n4mi-propagation-monitor)** — an
 ESP32-based desktop hardware instrument (LilyGO T-Encoder Pro, round AMOLED display) that polls
 this service's `/api/instrument/propagation` endpoint to drive a live propagation display. This is
 PropMon's primary consumer today, but PropMon itself is general-purpose — anything that can make
