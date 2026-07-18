@@ -20,6 +20,7 @@ with assistance from [Claude AI](https://claude.ai/).
 - **HamShackFeed** — single-file ham radio content aggregator; pulls blogs, podcasts, and YouTube channels into one searchable dashboard with favorites, read tracking, and a built-in podcast player
 - **HamShackFeed Pro** — server-powered version of HamShackFeed with SQLite persistence, direct RSS fetching (no API key needed), background refresh, and cross-device access
 - **ManualShelf** — locally-hosted PDF and image manual catalog; browse, search, tag, and open radio manuals and settings screenshots with auto-generated thumbnails; cross-computer visibility via NAS exchange folder
+- **PropMon** — always-on Docker service on the NAS that fetches HF propagation and tower/weather alert data, applies band-condition rating, and serves it as JSON — a backend for other tools, including the [N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments) ESP32 hardware project
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 ---
@@ -55,6 +56,13 @@ with assistance from [Claude AI](https://claude.ai/).
 - [MRP40](https://www.mrp40.com/) — Morse code decoder (CW workflow)
 - [PSTRotatorAz](http://www.qsl.net/yo3dmu/index_Page346.htm) — rotator control software
 
+### PropMon (optional, requires separate infrastructure)
+
+PropMon is a Docker service, not a script — it needs a Docker host (Portainer confirmed working)
+rather than Python on a shack PC. Most users cloning this repo for the Stream Deck / dashboard /
+HamShackFeed features can ignore this section entirely; it only matters if you also want the
+NAS-hosted propagation JSON backend. See [`propmon/README.md`](propmon/README.md) for full setup.
+
 ---
 
 ## Repository Structure
@@ -68,13 +76,15 @@ streamdeck-hamradio/
 │   ├── HamRadioChrome.ps1              # Ham radio website launcher
 │   ├── CloseHamRadio.ps1               # Clean shutdown script
 │   ├── StartDashboard.ps1              # Dashboard server launcher
+│   ├── stop_dashboard.ps1              # Dashboard stop (PID file method)
 │   ├── RotatorAzimuth.ps1              # Antenna direction control
 │   └── RotatorStop.ps1                 # Stop rotation immediately
 ├── dashboard/
 │   ├── dashboard_server.py             # Local Python web server + DX cluster proxy
-│   ├── N4MI_PropagationDashboard.html  # Propagation portal (rename callsign as needed)
-│   └── HamShackFeed.html               # Ham radio content aggregator (see setup below)
-├── hamshackfeed_pro/
+│   └── N4MI_PropagationDashboard.html  # Propagation portal (rename callsign as needed)
+├── HamShackFeed/
+│   └── HamShackFeed.html               # Original single-file content aggregator (see setup below)
+├── hamshackfeedpro/
 │   ├── server.py                       # Flask server, API routes, scheduler
 │   ├── fetcher.py                      # Direct RSS parsing (no API key needed)
 │   ├── requirements.txt                # Python dependencies
@@ -83,12 +93,19 @@ streamdeck-hamradio/
 │   └── templates/
 │       └── index.html                  # Frontend
 ├── manualshelf/
+│   ├── README.md                       # ManualShelf-specific setup detail
 │   ├── server.py                       # Flask server, SQLite catalog, NAS manifest
 │   ├── requirements.txt                # flask, PyMuPDF, Pillow
 │   ├── StartManualShelf.ps1            # Launcher (opens browser automatically)
 │   ├── StopManualShelf.ps1             # Stop via PID file
 │   └── templates/
 │       └── index.html                  # Frontend
+├── propmon/
+│   ├── README.md                       # PropMon-specific setup detail
+│   ├── propmon_server.py               # Flask app, background fetch threads, band-rating logic
+│   ├── Dockerfile                      # Python 3.12-slim build
+│   ├── docker-compose.yml              # Portainer stack definition
+│   └── requirements.txt                # flask, requests, astral
 └── icons/
     ├── FT8.png
     ├── SSB.png
@@ -135,8 +152,8 @@ HamShackFeed Pro button:
 
 ```
 Executable: pwsh.exe
-Arguments:  -ExecutionPolicy Bypass -Command "cd 'C:\Ham Scripts\hamshackfeed_pro'; python server.py"
-Start In:   C:\Ham Scripts\hamshackfeed_pro
+Arguments:  -ExecutionPolicy Bypass -Command "cd 'C:\Ham Scripts\hamshackfeedpro'; python server.py"
+Start In:   C:\Ham Scripts\hamshackfeedpro
 ```
 
 ### 4. Configure PSTRotatorAz for UDP control
@@ -159,11 +176,15 @@ See the [HamShackFeed Pro Setup](#hamshackfeed-pro-setup) section below.
 
 See the [ManualShelf Setup](#manualshelf-setup) section below.
 
+### 9. Set up PropMon (optional)
+
+See [`propmon/README.md`](propmon/README.md) — this one's a Docker/NAS deployment, not a local script, so it lives in its own README rather than this Quick Start.
+
 ---
 
 ## HamShackFeed Setup
 
-HamShackFeed (`dashboard/HamShackFeed.html`) is a single HTML file that aggregates ham radio blogs, podcasts, and YouTube channels. It works by fetching RSS feeds through the [rss2json.com](https://rss2json.com) API proxy.
+HamShackFeed (`HamShackFeed/HamShackFeed.html`) is a single HTML file that aggregates ham radio blogs, podcasts, and YouTube channels. It works by fetching RSS feeds through the [rss2json.com](https://rss2json.com) API proxy.
 
 ### API key required
 
@@ -186,7 +207,7 @@ const RSS2JSON_KEY = 'YOUR_RSS2JSON_API_KEY_HERE';
 
 ## HamShackFeed Pro Setup
 
-HamShackFeed Pro (`hamshackfeed_pro/`) is a locally-hosted server version that solves the limitations of the standalone HTML file:
+HamShackFeed Pro (`hamshackfeedpro/`) is a locally-hosted server version that solves the limitations of the standalone HTML file:
 
 | Feature | HamShackFeed | HamShackFeed Pro |
 |---|---|---|
@@ -198,17 +219,17 @@ HamShackFeed Pro (`hamshackfeed_pro/`) is a locally-hosted server version that s
 
 ### Installation
 
-1. Copy the `hamshackfeed_pro\` folder to `C:\Ham Scripts\`
+1. Copy the `hamshackfeedpro\` folder to `C:\Ham Scripts\`
 
 2. Install Python dependencies (run once):
 ```powershell
-cd "C:\Ham Scripts\hamshackfeed_pro"
+cd "C:\Ham Scripts\hamshackfeedpro"
 pip install -r requirements.txt
 ```
 
 3. Start the server:
 ```powershell
-cd "C:\Ham Scripts\hamshackfeed_pro"
+cd "C:\Ham Scripts\hamshackfeedpro"
 python server.py
 ```
 
@@ -239,11 +260,11 @@ copy(JSON.stringify(custom, null, 2));
 console.log(`Copied ${custom.length} custom sources to clipboard`);
 ```
 
-2. Paste into a file called `custom_sources.json` in `C:\Ham Scripts\hamshackfeed_pro\`
+2. Paste into a file called `custom_sources.json` in `C:\Ham Scripts\hamshackfeedpro\`
 
 3. With the Pro server running, execute:
 ```powershell
-cd "C:\Ham Scripts\hamshackfeed_pro"
+cd "C:\Ham Scripts\hamshackfeedpro"
 python import_sources.py
 ```
 
@@ -332,6 +353,22 @@ Start In:   C:\Ham Scripts\manualshelf
 
 ---
 
+## PropMon Setup
+
+PropMon (`propmon/`) is different from everything else in this repo — it's a Docker service meant
+to run on an always-on host (a NAS via Portainer, in this deployment), not a script launched from
+the Stream Deck. It fetches HF propagation and tower/weather alert data and serves it as JSON for
+other tools to consume — currently, the [N4MI Desktop Instrument
+Series](https://github.com/N4MI73/n4mi-desktop-instruments), an ESP32-based desktop hardware
+display.
+
+Full deployment steps, environment variables, endpoint documentation, and the band-rating model
+live in [`propmon/README.md`](propmon/README.md) rather than duplicated here, since the setup
+(Portainer, Docker Compose, a Tempest API token) is a different shape than everything else in this
+Quick Start.
+
+---
+
 ## Script Reference
 
 | Script | Purpose | Key Arguments |
@@ -340,10 +377,12 @@ Start In:   C:\Ham Scripts\manualshelf
 | `HamRadioChrome.ps1` | Opens ham radio websites in Chrome | none |
 | `CloseHamRadio.ps1` | Cleanly shuts down all ham radio apps | none |
 | `StartDashboard.ps1` | Starts Python server and opens dashboard | none |
+| `stop_dashboard.ps1` | Stops dashboard server via PID file | none |
 | `RotatorAzimuth.ps1` | Rotates antenna to any azimuth | `-az 270` (0–360) |
 | `RotatorStop.ps1` | Immediately stops antenna rotation | none |
-| `hamshackfeed_pro/server.py` | Starts HamShackFeed Pro on port 8074 | none |
+| `hamshackfeedpro/server.py` | Starts HamShackFeed Pro on port 8074 | none |
 | `manualshelf/server.py` | Starts ManualShelf catalog on port 8075 | none |
+| `propmon/propmon_server.py` | PropMon JSON backend, port 8076 (Docker/Portainer, not a local launch) | none |
 
 ---
 
@@ -372,6 +411,17 @@ These are approximate great-circle headings. Operators in other grid squares sho
 - **Launch delays** — adjust `$shortDelay` and `$jtalertDelay` in `HamRadioLauncher.ps1` if apps need more time to load on your PC.
 - **HamShackFeed API key** — set `RSS2JSON_KEY` in `HamShackFeed.html` (or use HamShackFeed Pro instead).
 - **HamShackFeed Pro refresh interval** — change `REFRESH_INTERVAL_MINUTES` near the top of `server.py`.
+- **PropMon station coordinates/zone** — update the `EM83_LOCATION`/`EM83_TZ` constants and `NWS_ZONE` in `propmon_server.py` for your own grid square; see `propmon/README.md`.
+
+---
+
+## Related Projects
+
+**[N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments)** — a
+family of ESP32-based desktop hardware instruments (starting with a LilyGO T-Encoder Pro
+propagation display) that consume PropMon's JSON API from this repo. Separate toolchain
+(PlatformIO/Arduino C++), separate repo, own README — linked here since PropMon is shared
+infrastructure between the two projects.
 
 ---
 
