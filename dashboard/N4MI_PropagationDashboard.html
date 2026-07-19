@@ -19,6 +19,7 @@
     --poor:     #ff4444;
     --band80:   #ff6b6b;
     --band40:   #ffa500;
+    --band30:   #2dd4bf;
     --band20:   #39ff14;
     --band17:   #00d4ff;
     --band15:   #a78bfa;
@@ -134,12 +135,14 @@
   .band-card::before { content:''; position:absolute; left:0;top:0;bottom:0; width:3px; }
 
   .band-card.b80::before{background:var(--band80)} .band-card.b40::before{background:var(--band40)}
+  .band-card.b30::before{background:var(--band30)}
   .band-card.b20::before{background:var(--band20)} .band-card.b17::before{background:var(--band17)}
   .band-card.b15::before{background:var(--band15)} .band-card.b12::before{background:var(--band12)}
   .band-card.b10::before{background:var(--band10)} .band-card.b6::before {background:var(--band6)}
 
   .band-name { font-family:'Orbitron',monospace; font-size:13px; font-weight:600; margin-left:6px; }
   .band-card.b80 .band-name{color:var(--band80)} .band-card.b40 .band-name{color:var(--band40)}
+  .band-card.b30 .band-name{color:var(--band30)}
   .band-card.b20 .band-name{color:var(--band20)} .band-card.b17 .band-name{color:var(--band17)}
   .band-card.b15 .band-name{color:var(--band15)} .band-card.b12 .band-name{color:var(--band12)}
   .band-card.b10 .band-name{color:var(--band10)} .band-card.b6  .band-name{color:var(--band6)}
@@ -211,8 +214,11 @@
     pointer-events:none; opacity:0.4;
   }
 
+  /* ── Alert banner stack (storm + radio blackout can both show) ── */
+  .alert-stack { position:sticky; top:0; z-index:200; display:flex; flex-direction:column; }
+
   /* ── Storm Alert Banner ── */
-  .storm-banner { display:none; position:sticky; top:0; z-index:200; }
+  .storm-banner { display:none; }
   .storm-banner.visible { display:block; }
   .storm-inner { display:flex; align-items:center; gap:16px; padding:12px 24px; flex-wrap:wrap; }
   .storm-banner.CAUTION  .storm-inner { background:#3d2e00; border-bottom:3px solid #ffd700; }
@@ -238,19 +244,61 @@
   .storm-status-CAUTION  { color:#ffd700;     border:1px solid #ffd700;     background:rgba(255,215,0,0.12); }
   .storm-status-WARNING  { color:#ff8c00;     border:1px solid #ff8c00;     background:rgba(255,140,0,0.12); }
   .storm-status-CRITICAL { color:#ff4444;     border:1px solid #ff4444;     background:rgba(255,68,68,0.15); animation:flash-red 0.8s infinite; }
+
+  /* ── Radio Blackout Alert Banner (X-ray flare -> NOAA R-scale) ── */
+  .blackout-banner { display:none; }
+  .blackout-banner.visible { display:block; }
+  .blackout-inner { display:flex; align-items:center; gap:16px; padding:12px 24px; flex-wrap:wrap; }
+  .blackout-banner.CAUTION  .blackout-inner { background:#00303d; border-bottom:3px solid #00d4ff; }
+  .blackout-banner.WARNING  .blackout-inner { background:#241b40; border-bottom:3px solid #a78bfa; }
+  .blackout-banner.CRITICAL .blackout-inner { background:#2d0033; border-bottom:3px solid #ec4899; animation:flash-blackout 0.8s infinite; }
+  @keyframes flash-blackout { 0%,100%{background:#2d0033} 50%{background:#560066} }
+  .blackout-icon { font-size:26px; flex-shrink:0; }
+  .blackout-text { flex:1; }
+  .blackout-title { font-family:'Orbitron',monospace; font-size:13px; font-weight:700; letter-spacing:2px; margin-bottom:4px; }
+  .blackout-banner.CAUTION  .blackout-title { color:#00d4ff; }
+  .blackout-banner.WARNING  .blackout-title { color:#a78bfa; }
+  .blackout-banner.CRITICAL .blackout-title { color:#ec4899; text-shadow:0 0 10px rgba(236,72,153,0.8); }
+  .blackout-detail { font-family:'Share Tech Mono',monospace; font-size:11px; color:rgba(255,255,255,0.85); line-height:1.6; }
+  .blackout-dismiss { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+    padding:6px 14px; background:transparent; cursor:pointer; flex-shrink:0; transition:all 0.2s; border-radius:2px; }
+  .blackout-banner.CAUTION  .blackout-dismiss { border:1px solid #00d4ff; color:#00d4ff; }
+  .blackout-banner.WARNING  .blackout-dismiss { border:1px solid #a78bfa; color:#a78bfa; }
+  .blackout-banner.CRITICAL .blackout-dismiss { border:1px solid #ec4899; color:#ec4899; }
+  .blackout-dismiss:hover { background:rgba(255,255,255,0.1); }
+  .blackout-status-pill { font-family:'Share Tech Mono',monospace; font-size:10px;
+    padding:3px 10px; border-radius:2px; letter-spacing:1px; display:inline-block; margin-top:4px; }
+  .blackout-status-NONE     { color:var(--good); border:1px solid var(--good); background:rgba(57,255,20,0.08); }
+  .blackout-status-CAUTION  { color:#00d4ff;     border:1px solid #00d4ff;     background:rgba(0,212,255,0.12); }
+  .blackout-status-WARNING  { color:#a78bfa;     border:1px solid #a78bfa;     background:rgba(167,139,250,0.12); }
+  .blackout-status-CRITICAL { color:#ec4899;     border:1px solid #ec4899;     background:rgba(236,72,153,0.15); animation:flash-blackout 0.8s infinite; }
 </style>
 </head>
 <body>
 
-<!-- Storm Alert Banner -->
-<div class="storm-banner" id="stormBanner">
-  <div class="storm-inner">
-    <div class="storm-icon" id="stormIcon">!</div>
-    <div class="storm-text">
-      <div class="storm-title" id="stormTitle">STORM ALERT</div>
-      <div class="storm-detail" id="stormDetail">Checking weather data...</div>
+<!-- Alert banner stack: storm (tower/weather) and radio blackout (propagation) are
+     independent and can both be visible at the same time -->
+<div class="alert-stack">
+  <div class="storm-banner" id="stormBanner">
+    <div class="storm-inner">
+      <div class="storm-icon" id="stormIcon">!</div>
+      <div class="storm-text">
+        <div class="storm-title" id="stormTitle">STORM ALERT</div>
+        <div class="storm-detail" id="stormDetail">Checking weather data...</div>
+      </div>
+      <button class="storm-dismiss" onclick="dismissStorm()">X DISMISS</button>
     </div>
-    <button class="storm-dismiss" onclick="dismissStorm()">X DISMISS</button>
+  </div>
+
+  <div class="blackout-banner" id="blackoutBanner">
+    <div class="blackout-inner">
+      <div class="blackout-icon" id="blackoutIcon">!</div>
+      <div class="blackout-text">
+        <div class="blackout-title" id="blackoutTitle">RADIO BLACKOUT</div>
+        <div class="blackout-detail" id="blackoutDetail">Checking solar data...</div>
+      </div>
+      <button class="blackout-dismiss" onclick="dismissBlackout()">X DISMISS</button>
+    </div>
   </div>
 </div>
 
@@ -314,12 +362,17 @@
     <div class="solar-sub" id="condSub">Loading...</div>
   </div>
   <div class="solar-item">
-  <div class="solar-item">
     <div class="solar-label">STORM STATUS</div>
     <div id="stormPill" class="storm-status-pill storm-status-NONE">ALL CLEAR</div>
     <div class="solar-sub" id="stormSub">Tempest + NWS</div>
   </div>
-      <div class="solar-label">LAST UPDATE</div>
+  <div class="solar-item">
+    <div class="solar-label">RADIO BLACKOUT</div>
+    <div id="blackoutPill" class="blackout-status-pill blackout-status-NONE">ALL CLEAR</div>
+    <div class="solar-sub" id="blackoutSub">X-ray flare class</div>
+  </div>
+  <div class="solar-item">
+    <div class="solar-label">LAST UPDATE</div>
     <div class="solar-value" id="lastUpdate" style="font-size:11px;color:var(--muted);margin-top:4px">--</div>
     <div class="solar-sub">HamQSL / NOAA</div>
   </div>
@@ -366,7 +419,7 @@
     <div class="panel-title">BAND CONDITIONS · EM83</div>
     <div class="status-row" id="statusRow"><span class="loading">LOADING</span></div>
     <div class="band-grid" id="bandGrid"></div>
-    <p class="data-note">Solar indices from NOAA SWPC. HamQSL widget updated every 3 hours. 80m/40m rated for D-layer absorption during day.</p>
+    <p class="data-note">Solar indices from NOAA SWPC. HamQSL widget updated every 3 hours. 80m/40m/30m rated for D-layer absorption during day.</p>
   </div>
 
   <!-- MUF / Propagation Map (center) -->
@@ -477,12 +530,12 @@ function showTab(name, el) {
 
 // Band config
 const bandColors = {
-  '80m':'var(--band80)','40m':'var(--band40)','20m':'var(--band20)','17m':'var(--band17)',
+  '80m':'var(--band80)','40m':'var(--band40)','30m':'var(--band30)','20m':'var(--band20)','17m':'var(--band17)',
   '15m':'var(--band15)','12m':'var(--band12)','10m':'var(--band10)','6m':'var(--band6)'
 };
-const bandClass = {'80m':'b80','40m':'b40','20m':'b20','17m':'b17','15m':'b15','12m':'b12','10m':'b10','6m':'b6'};
+const bandClass = {'80m':'b80','40m':'b40','30m':'b30','20m':'b20','17m':'b17','15m':'b15','12m':'b12','10m':'b10','6m':'b6'};
 const bandFreqs = {
-  '80m':[3500,4000],'40m':[7000,7300],'20m':[14000,14350],'17m':[18068,18168],
+  '80m':[3500,4000],'40m':[7000,7300],'30m':[10100,10150],'20m':[14000,14350],'17m':[18068,18168],
   '15m':[21000,21450],'12m':[24890,24990],'10m':[28000,29700],'6m':[50000,54000]
 };
 
@@ -518,6 +571,9 @@ async function fetchSolarData() {
         else if (xray.startsWith('M')) xEl.style.color = 'var(--fair)';
         else if (xray.startsWith('C')) xEl.style.color = 'var(--accent2)';
         else                           xEl.style.color = 'var(--good)';
+
+        // Radio blackout alert -- same xray field, classified against NOAA's R-scale
+        updateBlackoutBanner(classifyRadioBlackout(xray), xray);
 
         // Color solar wind
         const swVal = parseFloat(sw);
@@ -630,6 +686,7 @@ function rateBand(sfi, kIdx, band, tod) {
     //          night  dawn   day    dusk   (SFI thresholds for fair/good)
     '80m': { night:[70,90],  dawn:[80,110], day:[999,999], dusk:[80,110] },
     '40m': { night:[70,90],  dawn:[75,95],  day:[130,160], dusk:[75,95]  },
+    '30m': { night:[75,95],  dawn:[75,95],  day:[95,120],  dusk:[75,95]  },
     '20m': { night:[95,125], dawn:[85,110], day:[80,105],  dusk:[85,110] },
     '17m': { night:[105,135],dawn:[95,120], day:[90,115],  dusk:[95,120] },
     '15m': { night:[120,150],dawn:[110,140],day:[105,135], dusk:[110,140]},
@@ -651,7 +708,7 @@ function updateBandConditions(sfi, kIdx) {
   const tod = getTimeOfDay(utcHour);
   const todLabel = { night:'NIGHT', dawn:'DAWN', day:'DAY', dusk:'DUSK' }[tod];
 
-  const bandIds = ['80m','40m','20m','17m','15m','12m','10m','6m'];
+  const bandIds = ['80m','40m','30m','20m','17m','15m','12m','10m','6m'];
   const bands = bandIds.map(id => ({
     id,
     rating: rateBand(sfi, kIdx, id, tod),
@@ -757,6 +814,69 @@ function dismissStorm() {
 
 setInterval(fetchStormStatus, 60000);
 fetchStormStatus();
+
+
+// ── Radio Blackout Alert ────────────────────────────────
+// Classifies the same xray field already fetched by fetchSolarData() against
+// NOAA's R-scale (radio blackout severity). No separate fetch/poll needed --
+// this runs inline on the existing 5-minute solar refresh cycle. Independent
+// dismiss/escalation state from the storm banner, and its own banner slot, so
+// a solar flare and a thunderstorm can both be shown at the same time.
+var blackoutDismissed = false;
+var lastBlackoutLevel = 'NONE';
+
+function classifyRadioBlackout(xrayStr) {
+  // xrayStr looks like "C1.3", "M5.2", "X1.0". NOAA R-scale:
+  //   A/B/C (any)  -> R0  (no alert)
+  //   M1.0-M4.9    -> R1 (Minor)     -> CAUTION
+  //   M5.0-M9.9    -> R2 (Moderate)  -> WARNING
+  //   X1.0+        -> R3-R5 (Strong+)-> CRITICAL
+  if (!xrayStr || xrayStr === '--') return 'NONE';
+  const m = xrayStr.match(/^([A-Z])([\d.]+)/);
+  if (!m) return 'NONE';
+  const cls = m[1], mag = parseFloat(m[2]) || 0;
+  if (cls === 'X') return 'CRITICAL';
+  if (cls === 'M' && mag >= 5) return 'WARNING';
+  if (cls === 'M') return 'CAUTION';
+  return 'NONE';
+}
+
+function updateBlackoutBanner(level, xrayStr) {
+  const banner = document.getElementById('blackoutBanner');
+  const pill   = document.getElementById('blackoutPill');
+  const icon   = document.getElementById('blackoutIcon');
+  const title  = document.getElementById('blackoutTitle');
+  const detail = document.getElementById('blackoutDetail');
+
+  pill.className   = 'blackout-status-pill blackout-status-' + level;
+  pill.textContent = (level === 'NONE') ? 'ALL CLEAR' : level;
+
+  // Un-dismiss if severity escalates further (same pattern as storm banner)
+  if (level !== 'NONE' && level !== lastBlackoutLevel) { blackoutDismissed = false; }
+  lastBlackoutLevel = level;
+
+  if (level !== 'NONE' && !blackoutDismissed) {
+    const icons  = { CAUTION:'(!)', WARNING:'(!!)', CRITICAL:'[!!!]' };
+    const titles = {
+      CAUTION:  'R1 RADIO BLACKOUT -- MINOR HF DEGRADATION',
+      WARNING:  'R2 RADIO BLACKOUT -- MODERATE HF DEGRADATION',
+      CRITICAL: 'R3+ RADIO BLACKOUT -- SEVERE HF DEGRADATION'
+    };
+    banner.className  = 'blackout-banner visible ' + level;
+    icon.textContent  = icons[level]  || '(!)';
+    title.textContent = titles[level] || 'RADIO BLACKOUT';
+    detail.innerHTML  = 'X-ray flare: ' + xrayStr +
+      ' &nbsp;|&nbsp; HF degraded on sunlit path, low/mid bands hit hardest.<br>' +
+      'No per-band frequency data available -- check band conditions directly.';
+  } else if (level === 'NONE') {
+    banner.className = 'blackout-banner';
+  }
+}
+
+function dismissBlackout() {
+  blackoutDismissed = true;
+  document.getElementById('blackoutBanner').className = 'blackout-banner';
+}
 
 function refreshAll() {
   fetchSolarData();
