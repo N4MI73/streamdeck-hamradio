@@ -436,6 +436,7 @@ Full writeups with setup instructions, screenshots, and explanations at **[n4mi.
 5. Custom Icons, Getting Started & Closing Thoughts
 6. HamShackFeedPro — Upgraded ham radio content aggregator
 7. ManualShelf — A locally-hosted PDF and document catalog
+8. PropMon – a Desktop Propagation Monitor
 
 ---
 
