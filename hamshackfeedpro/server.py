@@ -12,7 +12,7 @@ import webbrowser
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, render_template, abort
 from apscheduler.schedulers.background import BackgroundScheduler
-from fetcher import fetch_feed, detect_feed, get_feed_title
+from fetcher import fetch_feed, detect_feed, get_feed_metadata
 
 # ── Config ────────────────────────────────────────────────
 PORT                     = 8074
@@ -70,6 +70,7 @@ def init_db():
                 name        TEXT    NOT NULL,
                 type        TEXT    NOT NULL,
                 url         TEXT    NOT NULL UNIQUE,
+                home_url    TEXT,
                 is_favorite INTEGER DEFAULT 0,
                 is_default  INTEGER DEFAULT 0,
                 last_fetched TEXT,
@@ -99,6 +100,13 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_items_source  ON items(source_id);
             CREATE INDEX IF NOT EXISTS idx_items_pubdate ON items(pub_date DESC);
         ''')
+
+        # Migration: add home_url to a sources table that already exists from before
+        # this feature (CREATE TABLE IF NOT EXISTS above only affects brand-new installs).
+        try:
+            conn.execute('ALTER TABLE sources ADD COLUMN home_url TEXT')
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
         # Seed defaults if table is empty
         count = conn.execute('SELECT COUNT(*) FROM sources').fetchone()[0]
@@ -133,7 +141,7 @@ def refresh_all():
         _refresh_lock.release()
 
 def _refresh_source(source):
-    items, error = fetch_feed(source)
+    items, error, home_url = fetch_feed(source)
     with get_db() as conn:
         if error:
             conn.execute(
@@ -141,10 +149,16 @@ def _refresh_source(source):
                 (str(error)[:500], source['id'])
             )
         else:
-            conn.execute(
-                'UPDATE sources SET last_error=NULL, last_fetched=datetime("now") WHERE id=?',
-                (source['id'],)
-            )
+            if home_url:
+                conn.execute(
+                    'UPDATE sources SET last_error=NULL, last_fetched=datetime("now"), home_url=? WHERE id=?',
+                    (home_url, source['id'])
+                )
+            else:
+                conn.execute(
+                    'UPDATE sources SET last_error=NULL, last_fetched=datetime("now") WHERE id=?',
+                    (source['id'],)
+                )
             for item in items:
                 conn.execute('''
                     INSERT OR IGNORE INTO items
@@ -219,14 +233,15 @@ def api_sources_add():
     if src_type == 'auto':
         src_type = detected_type or 'blog'
 
+    title, home_url = get_feed_metadata(feed_url)
     if not name:
-        name = get_feed_title(feed_url) or raw_url.split('/')[2].replace('www.', '')
+        name = title or raw_url.split('/')[2].replace('www.', '')
 
     try:
         with get_db() as conn:
             cur = conn.execute(
-                'INSERT INTO sources (name, type, url) VALUES (?,?,?)',
-                (name, src_type, feed_url)
+                'INSERT INTO sources (name, type, url, home_url) VALUES (?,?,?,?)',
+                (name, src_type, feed_url, home_url)
             )
             new_id = cur.lastrowid
             source = dict(conn.execute('SELECT * FROM sources WHERE id=?', (new_id,)).fetchone())
