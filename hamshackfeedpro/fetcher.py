@@ -18,7 +18,10 @@ YT_RSS  = 'https://www.youtube.com/feeds/videos.xml?channel_id='
 
 def fetch_feed(source):
     """
-    Fetch a feed source, return (list_of_items, error_string_or_None).
+    Fetch a feed source, return (list_of_items, error_string_or_None, home_url_or_None).
+    home_url is the feed's declared site link (<link> at the channel/feed level, not
+    per-entry) -- used to populate sources.home_url so source names can link out to the
+    site itself rather than just individual items.
     """
     try:
         resp = requests.get(source['url'], headers=HEADERS, timeout=TIMEOUT)
@@ -26,19 +29,21 @@ def fetch_feed(source):
         d = feedparser.parse(resp.content)
 
         if not d.entries and d.bozo:
-            return [], f"Parse error: {d.bozo_exception}"
+            return [], f"Parse error: {d.bozo_exception}", None
+
+        home_url = (d.feed.get('link') or '').strip() or None
 
         items = []
         for entry in d.entries[:10]:
             item = _parse_entry(entry, source)
             if item:
                 items.append(item)
-        return items, None
+        return items, None, home_url
 
     except requests.RequestException as e:
-        return [], str(e)
+        return [], str(e), None
     except Exception as e:
-        return [], str(e)
+        return [], str(e), None
 
 
 def _parse_entry(entry, source):
@@ -173,15 +178,20 @@ def detect_feed(url):
     return None, None
 
 
-def get_feed_title(feed_url):
-    """Return the feed's declared title, or None."""
+def get_feed_metadata(feed_url):
+    """
+    Return (title_or_None, home_url_or_None) for a feed, in a single request.
+    Used at add-source time -- home_url comes from the same parse as the title,
+    no extra HTTP round-trip needed.
+    """
     try:
         resp = requests.get(feed_url, headers=HEADERS, timeout=TIMEOUT)
         d = feedparser.parse(resp.content)
         title = d.feed.get('title', '').strip()
-        return title if title else None
+        home_url = (d.feed.get('link') or '').strip()
+        return (title or None, home_url or None)
     except Exception:
-        return None
+        return (None, None)
 
 
 # ── Helpers ───────────────────────────────────────────────
