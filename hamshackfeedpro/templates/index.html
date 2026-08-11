@@ -64,7 +64,9 @@ header { position:sticky; top:0; z-index:100; background:rgba(8,12,20,0.95); bac
 .source-item:hover { background:var(--bg3); }
 .source-item.selected { background:var(--bg3); }
 .source-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-.source-name { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.source-name { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-decoration:none; }
+.source-name[href] { cursor:pointer; }
+.source-name[href]:hover { text-decoration:underline; color:var(--accent); }
 .source-count { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--accent); background:rgba(0,180,216,0.1); padding:1px 6px; border-radius:8px; flex-shrink:0; }
 .source-star { background:none; border:none; font-size:13px; cursor:pointer; padding:0 2px; color:var(--text-dim); opacity:0; transition:color 0.15s,opacity 0.15s; flex-shrink:0; }
 .source-item:hover .source-star { opacity:1; }
@@ -89,7 +91,9 @@ header { position:sticky; top:0; z-index:100; background:rgba(8,12,20,0.95); bac
 .fav-card:hover { background:var(--bg2); }
 .fav-thumb { width:44px; height:44px; border-radius:4px; object-fit:cover; flex-shrink:0; background:var(--border); }
 .fav-info { flex:1; overflow:hidden; }
-.fav-source { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; }
+.fav-source { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:3px; text-decoration:none; display:block; }
+.fav-source[href] { cursor:pointer; }
+.fav-source[href]:hover { text-decoration:underline; color:var(--text); }
 .fav-title { font-family:'Syne',sans-serif; font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .fav-date { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text-muted); margin-top:2px; }
 .fav-star { color:var(--gold); font-size:14px; flex-shrink:0; }
@@ -495,7 +499,9 @@ function renderSourceList() {
       const unread = src.unread_count || 0;
       html += `<div class="source-item ${activeSource===src.id?'selected':''}" onclick="selectSource(${src.id})">
         <span class="source-dot" style="background:${dots[src.type]}${src.last_error?';opacity:0.3':''}"></span>
-        <span class="source-name" title="${escHtml(src.name)}">${escHtml(src.name)}</span>
+        ${src.home_url
+          ? `<a class="source-name" href="${escHtml(src.home_url)}" target="_blank" rel="noopener" title="Open ${escHtml(src.name)}'s site" onclick="event.stopPropagation()">${escHtml(src.name)}</a>`
+          : `<span class="source-name" title="${escHtml(src.name)}">${escHtml(src.name)}</span>`}
         ${unread > 0 ? `<span class="source-count">${unread}</span>` : ''}
         <button class="source-star ${src.is_favorite?'starred':''}" onclick="toggleFav(event,${src.id})" title="${src.is_favorite?'Remove favorite':'Add to favorites'}">★</button>
         <button class="source-remove" onclick="removeSource(event,${src.id})" title="Remove source">✕</button>
@@ -581,7 +587,9 @@ function renderFavorites() {
     return `<div class="fav-card ${src.type}" onclick="window.open('${escHtml(item.url)}','_blank')">
       ${item.thumbnail ? `<img class="fav-thumb" src="${escHtml(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
       <div class="fav-info">
-        <div class="fav-source">${escHtml(src.name)}</div>
+        ${src.home_url
+          ? `<a class="fav-source" href="${escHtml(src.home_url)}" target="_blank" rel="noopener" title="Open ${escHtml(src.name)}'s site" onclick="event.stopPropagation()">${escHtml(src.name)}</a>`
+          : `<div class="fav-source">${escHtml(src.name)}</div>`}
         <div class="fav-title">${escHtml(item.title||'')}</div>
         <div class="fav-date">${item.pub_date ? relDate(item.pub_date) : ''}</div>
       </div>
