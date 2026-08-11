@@ -286,7 +286,7 @@ ManualShelf (`manualshelf/`) is a locally-hosted catalog for PDF manuals and set
 | Feature | Detail |
 |---|---|
 | Port | **8075** |
-| Supported files | PDF, PNG, JPG, GIF, BMP, WEBP, DOCX, DOC, XLSX, XLS, CSV, PPTX, PPT, TXT, MD, HTML |
+| Supported files | PDF, PNG, JPG/JPEG, GIF, BMP, WEBP, DOCX, DOC, XLSX, XLS, CSV, PPTX, PPT, TXT, MD, HTML/HTM |
 | In-app preview | MD and TXT files render inside the app; all others open in default Windows app |
 | Full-text search | PDF text content is indexed and searchable via Re-index PDFs in Settings |
 | Thumbnail generation | PyMuPDF (first page of PDF) |
