@@ -70,6 +70,14 @@
     cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
   }
   .refresh-btn:hover { background: var(--accent); color: var(--bg); }
+  .version-tag { color: var(--muted); font-size: 10px; letter-spacing: 1px; margin-left: 10px; }
+  .dxmon-btn {
+    background: transparent; border: 1px solid var(--accent2); color: var(--accent2);
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; padding: 6px 14px;
+    cursor: pointer; letter-spacing: 1px; transition: all 0.2s; text-decoration: none;
+    display: inline-block;
+  }
+  .dxmon-btn:hover { background: var(--accent2); color: var(--bg); }
 
   /* ── Solar bar ── */
   .solar-bar {
@@ -86,12 +94,23 @@
   .solar-sub   { font-size: 9px; color: var(--muted); margin-top: 1px; }
 
   /* ── Main layout ── */
-  /* Row 1: band conditions | MUF map | cluster links  (3 cols) */
-  /* Row 2: DX cluster iframe (full width) */
+  /* Single row: band conditions | MUF map (+ merged alt-views/cluster links) | quick links (3 cols) */
+  .dxped-chips { display: flex; flex-wrap: wrap; gap: 6px; max-width: 420px; }
+  .dxped-chip {
+    display: flex; align-items: baseline; gap: 6px;
+    font-family: 'Share Tech Mono', monospace; font-size: 12px;
+    background: var(--bg); border: 1px solid var(--border); padding: 5px 12px;
+  }
+  .dxped-chip .cs { color: var(--accent); font-weight: 600; letter-spacing: 1px; }
+  .dxped-chip .dxcc { color: var(--text); }
+  .dxped-chip .end { color: var(--muted); font-size: 10px; }
+  .dxped-chip .end.end-soon { color: var(--fair); font-weight: 600; }
+  .dxped-meta { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
   .main {
     display: grid;
     grid-template-columns: 320px 1fr 260px;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto;
     gap: 1px;
     background: var(--border);
   }
@@ -158,6 +177,14 @@
   .map-panel { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; min-height: 420px; }
   .map-container { flex:1; position:relative; min-height:360px; }
   .map-container iframe { width:100%; height:100%; border:none; min-height:360px; filter:brightness(0.9) saturate(1.1); }
+  .map-open-overlay { position:absolute; inset:0; display:block; cursor:pointer; z-index:5; }
+  .map-open-hint {
+    position:absolute; bottom:10px; right:10px;
+    font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:1px;
+    color:var(--accent); background:rgba(9,13,18,0.88); border:1px solid var(--accent);
+    padding:5px 12px; opacity:0; transition:opacity 0.2s; pointer-events:none;
+  }
+  .map-open-overlay:hover .map-open-hint { opacity:1; }
 
   /* ── Cluster links panel ── */
   .links-panel { grid-column: 3; grid-row: 1; }
@@ -176,7 +203,8 @@
   }
 
   /* ── DX Cluster iframe row ── */
-  .spots-panel { grid-column: 1 / 4; grid-row: 2; min-height: 480px; display: flex; flex-direction: column; }
+  /* .spots-panel removed 2026-09-16 -- DX Cluster Spots panel eliminated, its links
+     merged into the map panel's alt-views row above */
   .spots-tabs { display: flex; gap: 1px; margin-bottom: 0; }
   .spots-tab {
     font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px;
@@ -304,9 +332,10 @@
 
 <header>
   <div>
-    <div class="callsign">N4MI <span>EM83 &nbsp;·&nbsp; HF + 6M PROPAGATION DASHBOARD</span></div>
+    <div class="callsign">N4MI <span>EM83 &nbsp;·&nbsp; HF + 6M PROPAGATION DASHBOARD <span class="version-tag">v.2026-09-16</span></span></div>
   </div>
   <div class="header-right">
+    <a class="dxmon-btn" href="http://192.168.6.29:8083/" target="_blank">&#9654; DXMON CURATION</a>
     <div>
       <div class="utc-clock" id="utcClock">--:--:--</div>
       <div class="utc-label">UTC</div>
@@ -395,22 +424,24 @@
       <img src="https://www.hamqsl.com/solar.php" style="height:170px;width:auto;border:none;display:block" alt="HamQSL Solar Widget - Solar Image"/>
     </a>
   </div>
-  <div style="margin-left:auto;display:flex;flex-direction:column;gap:5px;flex-shrink:0">
-    <a href="https://www.hamqsl.com/solar3.html" target="_blank" class="cluster-link" style="font-size:9px;padding:5px 10px">&#9654; HAMQSL CONDITIONS</a>
-    <a href="https://www.hamqsl.com/solar2.html" target="_blank" class="cluster-link" style="font-size:9px;padding:5px 10px">&#9654; HAMQSL DATA GUIDE</a>
-    <a href="https://www.hamqsl.com/solar1.html" target="_blank" class="cluster-link" style="font-size:9px;padding:5px 10px">&#9654; HAMQSL TOOLS</a>
-  </div>
-
-  <!-- DX Calendar -->
-  <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;margin-left:20px">
-    <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--accent2);white-space:nowrap">DX CALENDAR · DXNEWS</div>
-    <div style="border:1px solid var(--border);background:var(--bg);padding:6px;overflow-y:auto;max-height:155px;min-width:320px">
-      <div id="DXNewsCalendar"></div>
+  <!-- DX Expeditions -->
+  <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;margin-left:auto">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+      <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--accent2);white-space:nowrap">DX EXPEDITIONS &middot; ACTIVE</div>
+      <div class="dxped-meta" id="dxpedMeta">Loading&hellip;</div>
     </div>
-    <a href="https://dxnews.com/calendar/" target="_blank" class="cluster-link accent2" style="font-size:9px;padding:4px 10px;text-align:center">&#9654; FULL CALENDAR (NEW TAB)</a>
+    <div style="border:1px solid var(--border);background:var(--bg);padding:8px 10px;min-width:280px">
+      <div class="dxped-chips" id="dxpedChips">
+        <p class="data-note" style="margin:0">Loading&hellip;</p>
+      </div>
+    </div>
   </div>
 </div>
-<script>var url='https://dxnews.com/calendar.php?width=21&lang=en';var script=document.createElement('script');script.setAttribute('src',url);document.getElementsByTagName('head')[0].appendChild(script);</script>
+<!-- DX Calendar / old DX Expeditions mini-panel removed 2026-09-16, then rebuilt live
+     2026-09-16: DX Expeditions box now lives here, right of the HamQSL widgets, fed by
+     DXMon's confirmed GET /api/adxo (NAS :8083). HAMQSL CONDITIONS / DATA GUIDE buttons
+     removed from this bar -- duplicates of the same links already in the Quick Links column. -->
+
 
 <div class="main">
 
@@ -425,7 +456,8 @@
   <!-- MUF / Propagation Map (center) -->
   <div class="panel map-panel">
     <div class="panel-title">PROPAGATION MAP</div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+    <div class="link-section-label" style="margin:0 0 6px">ALT PROPAGATION VIEWS &amp; DX CLUSTER</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
       <div class="spots-tab active" style="padding:5px 14px;cursor:default">KC2G MUF</div>
       <a href="https://hf.dxview.org/perspective/EM83VK" target="_blank"
          style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--accent2);color:var(--accent2);text-decoration:none;transition:all 0.2s"
@@ -451,9 +483,30 @@
          onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">
         &#9654; OPENHAMCLOCK (NEW TAB)
       </a>
+      <a href="https://www.dxsummit.fi/#/" target="_blank"
+         style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--accent2);color:var(--accent2);text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='var(--accent2)';this.style.color='var(--bg)'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--accent2)'">
+        &#9654; DXSUMMIT (NEW TAB)
+      </a>
+      <a href="https://dxwatch.com/" target="_blank"
+         style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--accent2);color:var(--accent2);text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='var(--accent2)';this.style.color='var(--bg)'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--accent2)'">
+        &#9654; DXWATCH (NEW TAB)
+      </a>
+      <a href="https://holycluster.iarc.org/" target="_blank"
+         style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:5px 14px;border:1px solid var(--accent2);color:var(--accent2);text-decoration:none;transition:all 0.2s"
+         onmouseover="this.style.background='var(--accent2)';this.style.color='var(--bg)'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--accent2)'">
+        &#9654; HOLY CLUSTER (NEW TAB)
+      </a>
     </div>
     <div class="map-container">
       <iframe id="map-kc2g" style="width:100%;height:100%;border:none;min-height:340px;display:block" src="https://prop.kc2g.com/" title="KC2G MUF map" allowfullscreen loading="lazy"></iframe>
+      <a href="https://prop.kc2g.com/" target="_blank" class="map-open-overlay" title="Open KC2G MUF map full size in a new tab" aria-label="Open KC2G MUF map full size in a new tab">
+        <span class="map-open-hint">&#10530; OPEN FULL SIZE (NEW TAB)</span>
+      </a>
     </div>
   </div>
 
@@ -461,22 +514,16 @@
   <div class="panel links-panel">
     <div class="panel-title">QUICK LINKS</div>
 
+    <div class="link-section-label" style="margin-top:0">ALERTS</div>
+    <a class="cluster-link accent2" href="https://hamalert.org/" target="_blank">&#9654; HAMALERT</a>
+
+    <div class="link-section-label">DX EXPEDITIONS</div>
+    <a class="cluster-link accent2" href="https://www.dx-world.net/" target="_blank">&#9654; DX-WORLD.NET</a>
+    <a class="cluster-link accent2" href="https://www.ng3k.com/misc/adxo.html" target="_blank">&#9654; NG3K ADXO</a>
+
     <div class="link-section-label">PROPAGATION</div>
-    <a class="cluster-link" href="https://prop.kc2g.com/" target="_blank">&#9654; PROP MAP (KC2G)</a>
-    <a class="cluster-link" href="https://hf.dxview.org/perspective/EM83VK" target="_blank">&#9654; DXVIEW EM83VK</a>
     <a class="cluster-link" href="https://www.dxmaps.com/spots/map.php?Lan=E&Frec=0&ML=M&Map=NA&HF=1" target="_blank">&#9654; DXMAPS N.AMERICA</a>
     <a class="cluster-link" href="https://www.voacap.com/hf/index.html" target="_blank">&#9654; VOACAP PATH TOOL</a>
-    <a class="cluster-link" href="https://hamdash.com/" target="_blank">&#9654; HAMDASH</a>
-    <a class="cluster-link" href="https://dxlook.com/" target="_blank">&#9654; DXLOOK</a>
-    <a class="cluster-link" href="https://openhamclock.com/" target="_blank">&#9654; OPENHAMCLOCK</a>
-    <a class="cluster-link" href="https://www.hamqsl.com/solar.html" target="_blank">&#9654; HAMQSL SOLAR</a>
-    <a class="cluster-link" href="https://www.hamqsl.com/solar3.html" target="_blank">&#9654; HAMQSL CONDITIONS</a>
-    <a class="cluster-link" href="https://www.hamqsl.com/solar2.html" target="_blank">&#9654; HAMQSL DATA GUIDE</a>
-
-    <div class="link-section-label">DX CLUSTER</div>
-    <a class="cluster-link accent2" href="https://www.dxsummit.fi/#/" target="_blank">&#9654; DXSUMMIT</a>
-    <a class="cluster-link accent2" href="https://holycluster.iarc.org/" target="_blank">&#9654; HOLY CLUSTER</a>
-    <a class="cluster-link accent2" href="https://dxwatch.com/" target="_blank">&#9654; DXWATCH</a>
 
     <div class="link-section-label">LOGGING &amp; AWARDS</div>
     <a class="cluster-link" href="https://pskreporter.info/pskmap.html?preset&callsign=N4MI&mode=FT8&period=3600" target="_blank">&#9654; PSKREPORTER N4MI</a>
@@ -485,26 +532,6 @@
     <a class="cluster-link" href="https://clublog.org/loginform.php" target="_blank">&#9654; CLUBLOG</a>
     <a class="cluster-link" href="https://clublog.org/dxreport.html" target="_blank">&#9654; CLUBLOG DX REPORT</a>
     <a class="cluster-link" href="https://clublog.org/personal_spots.php" target="_blank">&#9654; CLUBLOG PERSONAL SPOTS</a>
-
-    <div class="link-section-label">ALERTS</div>
-    <a class="cluster-link accent2" href="https://hamalert.org/" target="_blank">&#9654; HAMALERT</a>
-
-    <div class="link-section-label">DX EXPEDITIONS</div>
-    <a class="cluster-link accent2" href="https://dxnews.com/calendar/" target="_blank">&#9654; DXNEWS CALENDAR</a>
-  </div>
-
-  <!-- DX Cluster Spots -->
-  <div class="panel spots-panel">
-    <div class="panel-title">DX CLUSTER SPOTS &nbsp;·&nbsp; HOLY CLUSTER LIVE</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <a href="https://www.dxsummit.fi/#/" target="_blank" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:7px 18px;border:1px solid var(--accent2);color:var(--accent2);text-decoration:none;transition:all 0.2s" onmouseover="this.style.background='var(--accent2)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent2)'">&#9654; OPEN DXSUMMIT IN NEW TAB</a>
-      <a href="https://dxwatch.com/" target="_blank" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:7px 18px;border:1px solid var(--accent2);color:var(--accent2);text-decoration:none;transition:all 0.2s" onmouseover="this.style.background='var(--accent2)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent2)'">&#9654; OPEN DXWATCH IN NEW TAB</a>
-      <a href="https://holycluster.iarc.org/" target="_blank" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:7px 18px;border:1px solid var(--muted);color:var(--muted);text-decoration:none" >&#9654; OPEN HOLY CLUSTER IN NEW TAB</a>
-    </div>
-    <div class="spots-content">
-      <iframe class="spots-iframe active" src="https://holycluster.iarc.org/" loading="lazy"></iframe>
-    </div>
-    <p class="data-note">Holy Cluster embedded live above. DXSummit and DXWatch block embedding — use the buttons above to open them in a new tab.</p>
   </div>
 
 </div>
@@ -878,8 +905,59 @@ function dismissBlackout() {
   document.getElementById('blackoutBanner').className = 'blackout-banner';
 }
 
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function shortDate(iso) {
+  if (!iso) return '--';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[2]}/${m[3]}` : iso;
+}
+
+function isEndingSoon(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return false;
+  const end = new Date(+m[1], +m[2]-1, +m[3]);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((end - today) / 86400000);
+  return diffDays === 0 || diffDays === 1;
+}
+
+async function loadDXExpeditions() {
+  const chips = document.getElementById('dxpedChips');
+  const meta  = document.getElementById('dxpedMeta');
+  const dxmonLink = '<a href="http://192.168.6.29:8083/" target="_blank" style="color:var(--accent2)">DXMon Curation &#9654;</a>';
+  try {
+    const res = await fetch('/api/adxo');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const active = (data.entries || []).filter(e => e.active);
+
+    if (active.length === 0) {
+      chips.innerHTML = '<p class="data-note" style="margin:0">No active DXpeditions right now.</p>';
+    } else {
+      chips.innerHTML = active.map(e => (
+        `<div class="dxped-chip"><span class="cs">${escapeHtml(e.callsign)}</span>` +
+        `<span class="dxcc">${escapeHtml(e.dxcc)}</span>` +
+        `<span class="end${isEndingSoon(e.end) ? ' end-soon' : ''}">ends ${escapeHtml(shortDate(e.end))}</span></div>`
+      )).join('');
+    }
+
+    const updated = data.updated
+      ? new Date(data.updated).toISOString().slice(11,16) + ' UTC'
+      : '--';
+    meta.innerHTML = `${active.length} active &middot; updated ${updated} &middot; ${dxmonLink}`;
+  } catch (err) {
+    chips.innerHTML = '<p class="data-note" style="margin:0;color:var(--poor)">DX Expeditions feed unavailable — DXMon may be offline.</p>';
+    meta.innerHTML = dxmonLink;
+  }
+}
+
 function refreshAll() {
   fetchSolarData();
+  loadDXExpeditions();
 }
 
 setInterval(refreshAll, 5*60*1000);
