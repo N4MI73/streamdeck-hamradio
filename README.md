@@ -23,6 +23,8 @@ with assistance from [Claude AI](https://claude.ai/).
 - **PropMon** — always-on Docker service on the NAS that fetches HF propagation and tower/weather alert data, applies band-condition rating, and serves it as JSON — a backend for other tools, including the [N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments) ESP32 hardware project
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
+> **Want the dashboard or HamShackFeed Pro always on?** An always-on server edition of both apps, run as Docker containers and deployed with Portainer, lives in [**n4mi-shack-server**](https://github.com/N4MI73/n4mi-shack-server). This repo remains the Windows / local-computer edition that the blog series describes, and both versions keep working.
+
 ---
 ## Before You Download
 - These projects were developed for my personal ham radio station and computing environment.
@@ -164,6 +166,10 @@ In PSTRotatorAz: **Communication → UDP Control → Enable**, port **12000**
 
 Edit `N4MI_PropagationDashboard.html` and update the callsign and grid square to your own. Update the callsign in `dashboard_server.py` as well (`CALLSIGN = "N4MI"`).
 
+For the storm alerts' Tempest data, put your own token in `TEMPEST_TOKEN` in `dashboard_server.py`, replacing the placeholder. Don't commit a real token to a public repo.
+
+> Prefer an always-on server? See the Docker edition in [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server), which reads the token from an environment variable instead.
+
 ### 6. Set up HamShackFeed
 
 See the [HamShackFeed Setup](#hamshackfeed-setup) section below.
@@ -208,6 +214,8 @@ const RSS2JSON_KEY = 'YOUR_RSS2JSON_API_KEY_HERE';
 ## HamShackFeed Pro Setup
 
 HamShackFeed Pro (`hamshackfeedpro/`) is a locally-hosted server version that solves the limitations of the standalone HTML file:
+
+> This section covers running HamShackFeed Pro on a Windows PC. For an always-on Docker/Portainer deployment, see [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server).
 
 | Feature | HamShackFeed | HamShackFeed Pro |
 |---|---|---|
