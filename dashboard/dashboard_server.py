@@ -26,7 +26,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DXMON_ADXO_URL = "http://192.168.6.29:8083/api/adxo"
 
 # ── Storm Alert Configuration ─────────────────────────────
-TEMPEST_TOKEN      = "eb01897a-3f84-4988-9642-6a2e40b208de"
+TEMPEST_TOKEN      = "insert-your-tempest-token-here"
 TEMPEST_STATION_ID = "159572"
 NWS_ZONE           = "GAC073"   # Columbia County GA
 CALLSIGN           = "N4MI"
