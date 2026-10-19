@@ -20,7 +20,7 @@ with assistance from [Claude AI](https://claude.ai/).
 - **HamShackFeed** — single-file ham radio content aggregator; pulls blogs, podcasts, and YouTube channels into one searchable dashboard with favorites, read tracking, and a built-in podcast player
 - **HamShackFeed Pro** — server-powered version of HamShackFeed with SQLite persistence, direct RSS fetching (no API key needed), background refresh, and cross-device access
 - **ManualShelf** — locally-hosted PDF and image manual catalog; browse, search, tag, and open radio manuals and settings screenshots with auto-generated thumbnails; cross-computer visibility via NAS exchange folder
-- **PropMon** — always-on Docker service on the NAS that fetches HF propagation and tower/weather alert data, applies band-condition rating, and serves it as JSON — a backend for other tools, including the [N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments) ESP32 hardware project
+- **PropMon** — always-on Docker service on the NAS that fetches HF propagation and tower/weather alert data, applies band-condition rating, and serves it as JSON — a backend for other tools, including the [N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments) ESP32 hardware project. **Moved 2026-10-19 to [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon)**
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 > **Want the dashboard or HamShackFeed Pro always on?** An always-on server edition of both apps, run as Docker containers and deployed with Portainer, lives in [**n4mi-shack-server**](https://github.com/N4MI73/n4mi-shack-server). This repo remains the Windows / local-computer edition that the blog series describes, and both versions keep working.
@@ -63,7 +63,7 @@ with assistance from [Claude AI](https://claude.ai/).
 PropMon is a Docker service, not a script — it needs a Docker host (Portainer confirmed working)
 rather than Python on a shack PC. Most users cloning this repo for the Stream Deck / dashboard /
 HamShackFeed features can ignore this section entirely; it only matters if you also want the
-NAS-hosted propagation JSON backend. See [`propmon/README.md`](propmon/README.md) for full setup.
+NAS-hosted propagation JSON backend. **PropMon now lives in [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon)** (moved 2026-10-19); see its README for full setup.
 
 ---
 
@@ -103,11 +103,7 @@ streamdeck-hamradio/
 │   └── templates/
 │       └── index.html                  # Frontend
 ├── propmon/
-│   ├── README.md                       # PropMon-specific setup detail
-│   ├── propmon_server.py               # Flask app, background fetch threads, band-rating logic
-│   ├── Dockerfile                      # Python 3.12-slim build
-│   ├── docker-compose.yml              # Portainer stack definition
-│   └── requirements.txt                # flask, requests, astral
+│   └── README.md                       # Pointer: PropMon moved to n4mi-shack-server (2026-10-19)
 └── icons/
     ├── FT8.png
     ├── SSB.png
@@ -184,7 +180,7 @@ See the [ManualShelf Setup](#manualshelf-setup) section below.
 
 ### 9. Set up PropMon (optional)
 
-See [`propmon/README.md`](propmon/README.md) — this one's a Docker/NAS deployment, not a local script, so it lives in its own README rather than this Quick Start.
+PropMon moved to [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon) on 2026-10-19 — it's a Docker/NAS deployment, not a local script. Follow the setup in its README there.
 
 ---
 
@@ -370,10 +366,10 @@ other tools to consume — currently, the [N4MI Desktop Instrument
 Series](https://github.com/N4MI73/n4mi-desktop-instruments), an ESP32-based desktop hardware
 display.
 
-Full deployment steps, environment variables, endpoint documentation, and the band-rating model
-live in [`propmon/README.md`](propmon/README.md) rather than duplicated here, since the setup
-(Portainer, Docker Compose, a Tempest API token) is a different shape than everything else in this
-Quick Start.
+**PropMon's code moved to [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon)
+on 2026-10-19**, together with the other always-on server apps. Full deployment steps, environment
+variables, endpoint documentation, and the band-rating model are in its README there. This
+repository's `propmon/` folder now holds only a pointer.
 
 ---
 
@@ -390,7 +386,6 @@ Quick Start.
 | `RotatorStop.ps1` | Immediately stops antenna rotation | none |
 | `hamshackfeedpro/server.py` | Starts HamShackFeed Pro on port 8074 | none |
 | `manualshelf/server.py` | Starts ManualShelf catalog on port 8075 | none |
-| `propmon/propmon_server.py` | PropMon JSON backend, port 8076 (Docker/Portainer, not a local launch) | none |
 
 ---
 
@@ -419,7 +414,7 @@ These are approximate great-circle headings. Operators in other grid squares sho
 - **Launch delays** — adjust `$shortDelay` and `$jtalertDelay` in `HamRadioLauncher.ps1` if apps need more time to load on your PC.
 - **HamShackFeed API key** — set `RSS2JSON_KEY` in `HamShackFeed.html` (or use HamShackFeed Pro instead).
 - **HamShackFeed Pro refresh interval** — change `REFRESH_INTERVAL_MINUTES` near the top of `server.py`.
-- **PropMon station coordinates/zone** — update the `EM83_LOCATION`/`EM83_TZ` constants and `NWS_ZONE` in `propmon_server.py` for your own grid square; see `propmon/README.md`.
+- **PropMon station coordinates/zone** — now in [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon) (`propmon_server.py` there).
 
 ---
 
@@ -427,9 +422,9 @@ These are approximate great-circle headings. Operators in other grid squares sho
 
 **[N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments)** — a
 family of ESP32-based desktop hardware instruments (starting with a LilyGO T-Encoder Pro
-propagation display) that consume PropMon's JSON API from this repo. Separate toolchain
-(PlatformIO/Arduino C++), separate repo, own README — linked here since PropMon is shared
-infrastructure between the two projects.
+propagation display) that consume PropMon's JSON API. PropMon itself now lives in
+[n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon). Separate
+toolchain (PlatformIO/Arduino C++), separate repo, own README.
 
 ---
 
