@@ -162,9 +162,11 @@ In PSTRotatorAz: **Communication → UDP Control → Enable**, port **12000**
 
 Edit `N4MI_PropagationDashboard.html` and update the callsign and grid square to your own. Update the callsign in `dashboard_server.py` as well (`CALLSIGN = "N4MI"`).
 
-For the storm alerts' Tempest data, put your own token in `TEMPEST_TOKEN` in `dashboard_server.py`, replacing the placeholder. Don't commit a real token to a public repo.
+For the storm alerts' Tempest data, get a token at tempestwx.com → Settings → Data Authorizations and store it in a Windows **user environment variable** named `TEMPEST_TOKEN` (Start → "Edit environment variables for your account" → New). Restart the dashboard launcher afterwards. The server reads it at startup and prints whether it was found. Without a token, storm alerts run on NWS alerts only. **Never put a real token in `dashboard_server.py`** — this is a public repo, and the file used to be served by the dashboard itself.
 
-> Prefer an always-on server? See the Docker edition in [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server), which reads the token from an environment variable instead.
+The dashboard server answers only the dashboard page and its `/api/` endpoints; other files in its folder aren't served (changed 2026-10-20).
+
+> Prefer an always-on server? See the Docker edition in [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server), which reads the token from an environment variable the same way.
 
 ### 6. Set up HamShackFeed
 
@@ -314,6 +316,8 @@ pip install -r requirements.txt
 Or run directly: `python server.py`
 
 Open `http://localhost:8075` in your browser.
+
+**ManualShelf is reachable from this computer only** (since 2026-10-20). Its API can open files on the desktop and has no login, so it no longer listens on the network. The cross-computer "Remote Manuals" view is unaffected — it works through the NAS exchange folder, not over HTTP. To allow other devices anyway, set the environment variable `MANUALSHELF_HOST=0.0.0.0` before starting it (any device on your LAN could then use it). ManualShelf only adds, previews and opens its supported document and image types; programs and scripts are refused.
 
 ### First-time setup
 

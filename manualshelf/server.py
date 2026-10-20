@@ -30,6 +30,26 @@ TEXT_EXTS  = {".txt", ".md"}
 HTML_EXTS  = {".html", ".htm"}
 ALL_EXTS   = PDF_EXTS | IMAGE_EXTS | DOC_EXTS | SHEET_EXTS | PPTX_EXTS | TEXT_EXTS | HTML_EXTS
 
+# Security (2026-10-20 review):
+# - Listens on this PC only by default. ManualShelf's cross-computer view
+#   works through manifest files on the NAS, not over HTTP, so nothing else
+#   needs to reach it. Set MANUALSHELF_HOST=0.0.0.0 to allow other devices
+#   (then any device on the LAN can use the API -- there is no login).
+# - Only ManualShelf's own document/image types can be added, previewed or
+#   opened; programs and scripts (.exe, .bat, .cmd, .ps1, .lnk, ...) never
+#   reach the operating system's opener, including older catalog entries.
+HOST            = os.environ.get("MANUALSHELF_HOST", "127.0.0.1")
+MAX_PREVIEW_BYTES = 2 * 1024 * 1024
+
+
+def is_catalog_file(p) -> bool:
+    """True if p is an existing regular file with a supported extension."""
+    try:
+        p = Path(p)
+        return p.suffix.lower() in ALL_EXTS and p.is_file()
+    except OSError:
+        return False
+
 def ext_to_type(ext: str) -> str:
     ext = ext.lower()
     if ext in PDF_EXTS:    return "pdf"
@@ -262,6 +282,10 @@ def api_preview(mid):
     fp = Path(row["file_path"])
     if not fp.exists():
         return "File not found on disk", 404
+    if fp.suffix.lower() not in TEXT_EXTS or not fp.is_file():
+        return "Preview is only available for .txt and .md files", 400
+    if fp.stat().st_size > MAX_PREVIEW_BYTES:
+        return "File too large to preview", 413
     try:
         text = fp.read_text(encoding="utf-8", errors="replace")
     except Exception as e:
@@ -413,6 +437,8 @@ def api_add():
     file_path = data.get("file_path", "").strip()
     if not file_path or not Path(file_path).exists():
         return jsonify({"error": "File not found"}), 400
+    if not is_catalog_file(file_path):
+        return jsonify({"error": "Not a supported document type"}), 400
     p   = Path(file_path)
     ft  = ext_to_type(p.suffix)
     hid = file_hash(p)
@@ -473,7 +499,7 @@ def api_add_batch():
 
     for fp in paths:
         p = Path(fp)
-        if not p.exists():
+        if not p.exists() or not is_catalog_file(p):
             errors.append(fp)
             continue
         ft  = ext_to_type(p.suffix)
@@ -667,6 +693,8 @@ def api_open(mid):
     fp = Path(row["file_path"])
     if not fp.exists():
         return jsonify({"error": f"File not found on disk: {fp}"}), 404
+    if not is_catalog_file(fp):
+        return jsonify({"error": "Refusing to open: not a supported document type"}), 400
     try:
         if platform.system() == "Windows":
             os.startfile(str(fp))
@@ -731,6 +759,6 @@ def api_stats():
     })
 
 if __name__ == "__main__":
-    print(f"ManualShelf starting on http://localhost:{PORT}")
+    print(f"ManualShelf starting on http://localhost:{PORT} (listening on {HOST})")
     push_manifest()
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    app.run(host=HOST, port=PORT, debug=False)

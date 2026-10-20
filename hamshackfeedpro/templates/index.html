@@ -500,7 +500,7 @@ function renderSourceList() {
       html += `<div class="source-item ${activeSource===src.id?'selected':''}" onclick="selectSource(${src.id})">
         <span class="source-dot" style="background:${dots[src.type]}${src.last_error?';opacity:0.3':''}"></span>
         ${src.home_url
-          ? `<a class="source-name" href="${escHtml(src.home_url)}" target="_blank" rel="noopener" title="Open ${escHtml(src.name)}'s site" onclick="event.stopPropagation()">${escHtml(src.name)}</a>`
+          ? `<a class="source-name" href="${escHtml(safeUrl(src.home_url))}" target="_blank" rel="noopener" title="Open ${escHtml(src.name)}'s site" onclick="event.stopPropagation()">${escHtml(src.name)}</a>`
           : `<span class="source-name" title="${escHtml(src.name)}">${escHtml(src.name)}</span>`}
         ${unread > 0 ? `<span class="source-count">${unread}</span>` : ''}
         <button class="source-star ${src.is_favorite?'starred':''}" onclick="toggleFav(event,${src.id})" title="${src.is_favorite?'Remove favorite':'Add to favorites'}">★</button>
@@ -551,23 +551,23 @@ function cardHTML(item) {
   const hasAudio = !!item.audio_url;
 
   return `<div class="feed-card ${item.is_read?'read':''}" data-guid="${escHtml(item.guid)}">
-    <div class="card-type-bar ${item.source_type}"></div>
-    ${hasThumb ? `<img class="card-thumb" src="${escHtml(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+    <div class="card-type-bar ${safeType(item.source_type)}"></div>
+    ${hasThumb ? `<img class="card-thumb" src="${escHtml(safeUrl(item.thumbnail))}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
     <div class="card-body">
       <div class="card-meta">
         <span class="card-source">${escHtml(item.source_name)}</span>
-        <span class="card-type-badge ${item.source_type}">${item.source_type}</span>
+        <span class="card-type-badge ${safeType(item.source_type)}">${safeType(item.source_type)}</span>
         <span class="card-date">${dateStr}</span>
       </div>
       <div class="card-title">${escHtml(item.title||'Untitled')}</div>
       ${item.description ? `<div class="card-desc">${escHtml(item.description)}</div>` : ''}
     </div>
     <div class="card-footer">
-      <button class="card-read-btn" onclick="toggleRead(event,'${escHtml(item.guid)}')">
+      <button class="card-read-btn" data-guid="${escHtml(item.guid)}" onclick="toggleRead(event,this.dataset.guid)">
         ${item.is_read ? '✓ Read' : '● Mark read'}
       </button>
-      ${hasAudio ? `<button class="card-play-btn" onclick="playerPlay(event,'${escHtml(item.audio_url)}','${escHtml(item.title)}','${escHtml(item.source_name)}')">▶ Play</button>` : ''}
-      <a class="card-open-btn" href="${escHtml(item.url)}" target="_blank" rel="noopener" onclick="markRead('${escHtml(item.guid)}')">Open →</a>
+      ${hasAudio ? `<button class="card-play-btn" data-url="${escHtml(safeUrl(item.audio_url))}" data-title="${escHtml(item.title)}" data-source="${escHtml(item.source_name)}" onclick="playerPlay(event,this.dataset.url,this.dataset.title,this.dataset.source)">▶ Play</button>` : ''}
+      <a class="card-open-btn" href="${escHtml(safeUrl(item.url))}" target="_blank" rel="noopener" data-guid="${escHtml(item.guid)}" onclick="markRead(this.dataset.guid)">Open →</a>
     </div>
   </div>`;
 }
@@ -584,11 +584,11 @@ function renderFavorites() {
   const html = favSrcs.map(src => {
     const item = allItems.find(i => i.source_id === src.id);
     if (!item) return '';
-    return `<div class="fav-card ${src.type}" onclick="window.open('${escHtml(item.url)}','_blank')">
-      ${item.thumbnail ? `<img class="fav-thumb" src="${escHtml(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+    return `<div class="fav-card ${safeType(src.type)}" data-url="${escHtml(safeUrl(item.url))}" onclick="openSafe(this.dataset.url)">
+      ${item.thumbnail ? `<img class="fav-thumb" src="${escHtml(safeUrl(item.thumbnail))}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
       <div class="fav-info">
         ${src.home_url
-          ? `<a class="fav-source" href="${escHtml(src.home_url)}" target="_blank" rel="noopener" title="Open ${escHtml(src.name)}'s site" onclick="event.stopPropagation()">${escHtml(src.name)}</a>`
+          ? `<a class="fav-source" href="${escHtml(safeUrl(src.home_url))}" target="_blank" rel="noopener" title="Open ${escHtml(src.name)}'s site" onclick="event.stopPropagation()">${escHtml(src.name)}</a>`
           : `<div class="fav-source">${escHtml(src.name)}</div>`}
         <div class="fav-title">${escHtml(item.title||'')}</div>
         <div class="fav-date">${item.pub_date ? relDate(item.pub_date) : ''}</div>
@@ -774,6 +774,8 @@ const audio = document.getElementById('audioEl');
 
 function playerPlay(e, url, title, source) {
   e.stopPropagation();
+  url = safeUrl(url);
+  if (!url) return;
   document.getElementById('playerTitle').textContent  = title;
   document.getElementById('playerSource').textContent = source;
   document.getElementById('playerBar').classList.add('visible');
@@ -826,18 +828,32 @@ async function webSearch(q) {
     });
     if (!results.length) { grid.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--text-muted)">No results.</div>'; return; }
     grid.innerHTML = results.slice(0,6).map(r => `
-      <div class="feed-card" onclick="window.open('${escHtml(r.url)}','_blank')">
+      <div class="feed-card" data-url="${escHtml(safeUrl(r.url))}" onclick="openSafe(this.dataset.url)">
         <div class="card-type-bar blog"></div>
         <div class="card-body">
           <div class="card-meta"><span class="card-source">Web</span><span class="card-type-badge blog">Search</span></div>
           <div class="card-title">${escHtml(r.title.slice(0,120))}</div>
         </div>
-        <div class="card-footer"><a class="card-open-btn" href="${escHtml(r.url)}" target="_blank" rel="noopener">Open →</a></div>
+        <div class="card-footer"><a class="card-open-btn" href="${escHtml(safeUrl(r.url))}" target="_blank" rel="noopener">Open →</a></div>
       </div>`).join('');
   } catch(e) { grid.innerHTML=''; }
 }
 
 // ── Helpers ───────────────────────────────────────────────
+// Security (2026-10-20): feed-supplied values never go inside inline
+// JavaScript. They go in data- attributes (escHtml is correct there) and the
+// handlers read this.dataset. Links and media accept only http(s) URLs, so a
+// feed can't supply a javascript: link. Source types are limited to the known
+// three before they're used as CSS classes or text.
+function safeUrl(u) {
+  if (u == null) return '';
+  const s = String(u).trim();
+  return /^https?:\/\//i.test(s) ? s : '';
+}
+const KNOWN_TYPES = ['blog', 'podcast', 'youtube'];
+function safeType(t) { return KNOWN_TYPES.includes(t) ? t : 'blog'; }
+function openSafe(u) { const s = safeUrl(u); if (s) window.open(s, '_blank', 'noopener'); }
+
 function escHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');

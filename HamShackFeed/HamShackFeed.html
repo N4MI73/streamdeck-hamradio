@@ -1103,7 +1103,7 @@ function renderFavorites() {
     var items = allItems.filter(function(i) { return i.sourceId === srcId; });
     var item  = items[0];
     if (!item) {
-      html += '<div class="fav-card ' + src.type + '">' +
+      html += '<div class="fav-card ' + safeType(src.type) + '">' +
         '<div class="fav-info">' +
           '<div class="fav-source">' + escHtml(src.name) + '</div>' +
           '<div class="fav-title" style="color:var(--text-muted)">No items loaded</div>' +
@@ -1113,9 +1113,9 @@ function renderFavorites() {
       return;
     }
     var thumb = item.thumbnail
-      ? '<img class="fav-thumb" src="' + escHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+      ? '<img class="fav-thumb" src="' + escHtml(safeUrl(item.thumbnail)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
       : '';
-    html += '<div class="fav-card ' + item.type + '" onclick="window.open(\'' + escHtml(item.link) + '\',' + "'_blank'" + ')" title="' + escHtml(item.title) + '">' +
+    html += '<div class="fav-card ' + safeType(item.type) + '" data-url="' + escHtml(safeUrl(item.link)) + '" onclick="openSafe(this.dataset.url)" title="' + escHtml(item.title) + '">' +
       thumb +
       '<div class="fav-info">' +
         '<div class="fav-source">' + escHtml(src.name) + '</div>' +
@@ -1144,6 +1144,8 @@ function initPlayer() {
 
 function playEpisode(url, title, source, e) {
   if (e) e.stopPropagation();
+  url = safeUrl(url);
+  if (!url) return;
   initPlayer();
   var bar = document.getElementById('playerBar');
   document.getElementById('playerTitle').textContent  = title;
@@ -1397,20 +1399,20 @@ function renderCard(item) {
     '<div class="card-body">' +
       '<div class="card-meta">' +
         '<span class="card-source">' + escHtml(item.sourceName) + '</span>' +
-        '<span class="card-type-badge ' + item.type + '">' + item.type + '</span>' +
+        '<span class="card-type-badge ' + safeType(item.type) + '">' + safeType(item.type) + '</span>' +
         '<span class="card-date">' + date + '</span>' +
       '</div>' +
       '<div class="card-title">' + escHtml(item.title) + '</div>' +
       (item.description ? '<div class="card-desc">' + escHtml(item.description) + '</div>' : '') +
     '</div>' +
     '<div class="card-footer">' +
-      '<button class="card-read-btn" onclick="toggleRead(\'' + escHtml(item.id) + '\',event)">' +
+      '<button class="card-read-btn" data-id="' + escHtml(item.id) + '" onclick="toggleRead(this.dataset.id,event)">' +
         (isRead ? '&#10003; Read' : '&#9679; Mark read') +
       '</button>' +
       (item.type === 'podcast' && item.audioUrl
-        ? '<button class="card-play-btn" onclick="playEpisode(\'' + escHtml(item.audioUrl) + '\',\'' + escHtml(item.title) + '\',\'' + escHtml(item.sourceName) + '\',event)">&#9654; Play</button>'
+        ? '<button class="card-play-btn" data-url="' + escHtml(safeUrl(item.audioUrl)) + '" data-title="' + escHtml(item.title) + '" data-source="' + escHtml(item.sourceName) + '" onclick="playEpisode(this.dataset.url,this.dataset.title,this.dataset.source,event)">&#9654; Play</button>'
         : '') +
-      '<a class="card-open-btn" href="' + escHtml(item.link) + '" target="_blank" rel="noopener" onclick="markRead(\'' + escHtml(item.id) + '\')">Open</a>' +
+      '<a class="card-open-btn" href="' + escHtml(safeUrl(item.link)) + '" target="_blank" rel="noopener" data-id="' + escHtml(item.id) + '" onclick="markRead(this.dataset.id)">Open</a>' +
     '</div>' +
   '</div>';
 }
@@ -1438,7 +1440,7 @@ function renderSourceList() {
 
       var el = document.createElement('div');
       el.className = cls;
-      el.setAttribute('onclick', "selectSource('" + src.id + "')");
+      el.onclick = (function(id) { return function() { selectSource(id); }; })(src.id);
 
       var dot = document.createElement('div');
       dot.className = 'source-dot';
@@ -1453,13 +1455,13 @@ function renderSourceList() {
       starBtn.className = starCls;
       starBtn.title = starTitle;
       starBtn.innerHTML = '&#9733;';
-      starBtn.setAttribute('onclick', "toggleFavorite('" + src.id + "',event)");
+      starBtn.onclick = (function(id) { return function(e) { toggleFavorite(id, e); }; })(src.id);
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'source-remove';
       removeBtn.title = 'Remove source';
       removeBtn.innerHTML = '&#10005;';
-      removeBtn.setAttribute('onclick', "removeSource('" + src.id + "',event)");
+      removeBtn.onclick = (function(id) { return function(e) { removeSource(id, e); }; })(src.id);
 
       el.appendChild(dot);
       el.appendChild(nameSpan);
@@ -1799,6 +1801,15 @@ function formatDate(str) {
   } catch(e) { return ''; }
 }
 
+// Security (2026-10-20): feed values go in data- attributes, never inside
+// inline JavaScript; links/media must be http(s); types limited to known ones.
+function safeUrl(u) {
+  var s = String(u || '').trim();
+  return /^https?:\/\//i.test(s) ? s : '';
+}
+function safeType(t) { return ['blog', 'podcast', 'youtube'].indexOf(t) >= 0 ? t : 'blog'; }
+function openSafe(u) { var s = safeUrl(u); if (s) window.open(s, '_blank', 'noopener'); }
+
 function escHtml(s) {
   return String(s||'')
     .replace(/&/g,'&amp;')
@@ -1844,5 +1855,4 @@ init();
 </div>
 
 </body>
-</html>'<button class="source-star \' + (isStarred ? \'starred\' : \'\') + \'" onclick="toggleFavorite(\\\'\' + src.id + \'\\\',event)" title="Add to favorites">&#9733;</button>\' +
-        
+</html>

@@ -12,7 +12,7 @@ import webbrowser
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, render_template, abort
 from apscheduler.schedulers.background import BackgroundScheduler
-from fetcher import fetch_feed, detect_feed, get_feed_metadata
+from fetcher import fetch_feed, detect_feed, get_feed_metadata, check_public_url, UnsafeURL
 
 # ── Config ────────────────────────────────────────────────
 PORT                     = 8074
@@ -216,6 +216,17 @@ def api_sources_add():
 
     if not raw_url:
         return jsonify({'error': 'URL is required'}), 400
+
+    # Security (2026-10-20): only known source types, and only public
+    # http(s) addresses (see fetcher.check_public_url).
+    if src_type not in ('auto', 'blog', 'podcast', 'youtube'):
+        return jsonify({'error': 'Type must be auto, blog, podcast or youtube'}), 400
+    if '://' not in raw_url:          # bare "example.com/feed" -> https
+        raw_url = 'https://' + raw_url
+    try:
+        check_public_url(raw_url)
+    except UnsafeURL as e:
+        return jsonify({'error': str(e)}), 400
 
     # YouTube handle — can't auto-resolve
     if 'youtube.com/@' in raw_url or ('youtu.be' in raw_url and '@' in raw_url):

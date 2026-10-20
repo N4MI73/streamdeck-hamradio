@@ -5,6 +5,9 @@ Fetches and parses RSS/Atom feeds directly, no API proxy needed.
 
 import re
 import hashlib
+import ipaddress
+import socket
+from urllib.parse import urljoin, urlsplit
 import requests
 import feedparser
 from datetime import datetime
@@ -16,6 +19,56 @@ TIMEOUT = 15
 YT_RSS  = 'https://www.youtube.com/feeds/videos.xml?channel_id='
 
 
+
+# ── Outbound request safety (2026-10-20) ──────────────────────────────
+# Feed URLs come from whoever adds a source, so HamShackFeed Pro only fetches
+# public http(s) addresses: no loopback, private (LAN), link-local or other
+# non-public destinations, checked again on every redirect hop. This stops
+# the app being used to probe the NAS, router or other LAN services.
+# (Limit: a DNS name that changes between the check and the request -- "DNS
+# rebinding" -- isn't covered; acceptable for a LAN-only app.)
+MAX_REDIRECTS = 5
+
+
+class UnsafeURL(ValueError):
+    pass
+
+
+def check_public_url(url):
+    """Raise UnsafeURL unless url is http(s) to a public address."""
+    parts = urlsplit(url)
+    if parts.scheme not in ('http', 'https'):
+        raise UnsafeURL('Only http:// and https:// feed addresses are allowed')
+    if parts.username or parts.password:
+        raise UnsafeURL('Feed addresses with a user name or password are not allowed')
+    host = parts.hostname
+    if not host:
+        raise UnsafeURL('Feed address has no host name')
+    try:
+        infos = socket.getaddrinfo(host, parts.port or (443 if parts.scheme == 'https' else 80),
+                                   proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        raise UnsafeURL(f'Could not resolve {host}')
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0].split('%')[0])
+        if not ip.is_global or ip.is_multicast:
+            raise UnsafeURL(f'{host} is not a public internet address')
+
+
+def safe_get(url, **kwargs):
+    """requests.get that refuses non-public destinations, following up to
+    MAX_REDIRECTS redirects itself so every hop is checked."""
+    kwargs.setdefault('headers', HEADERS)
+    kwargs.setdefault('timeout', TIMEOUT)
+    for _ in range(MAX_REDIRECTS + 1):
+        check_public_url(url)
+        resp = requests.get(url, allow_redirects=False, **kwargs)
+        if resp.is_redirect and resp.headers.get('location'):
+            url = urljoin(url, resp.headers['location'])
+            continue
+        return resp
+    raise UnsafeURL('Too many redirects')
+
 def fetch_feed(source):
     """
     Fetch a feed source, return (list_of_items, error_string_or_None, home_url_or_None).
@@ -24,7 +77,7 @@ def fetch_feed(source):
     site itself rather than just individual items.
     """
     try:
-        resp = requests.get(source['url'], headers=HEADERS, timeout=TIMEOUT)
+        resp = safe_get(source['url'])
         resp.raise_for_status()
         d = feedparser.parse(resp.content)
 
@@ -157,7 +210,7 @@ def detect_feed(url):
     ]
     for candidate in candidates:
         try:
-            resp = requests.get(candidate, headers=HEADERS, timeout=TIMEOUT)
+            resp = safe_get(candidate)
             if resp.ok:
                 d = feedparser.parse(resp.content)
                 if d.entries:
@@ -167,7 +220,7 @@ def detect_feed(url):
 
     # ── Try the URL itself as a feed ─────────────────────
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp = safe_get(url)
         if resp.ok:
             d = feedparser.parse(resp.content)
             if d.entries:
@@ -185,7 +238,7 @@ def get_feed_metadata(feed_url):
     no extra HTTP round-trip needed.
     """
     try:
-        resp = requests.get(feed_url, headers=HEADERS, timeout=TIMEOUT)
+        resp = safe_get(feed_url)
         d = feedparser.parse(resp.content)
         title = d.feed.get('title', '').strip()
         home_url = (d.feed.get('link') or '').strip()

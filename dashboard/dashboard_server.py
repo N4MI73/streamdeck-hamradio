@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""
+r"""
 Ham Radio Dashboard Server - with Storm Alert Monitor
 Save to: C:\Ham Scripts\dashboard_server.py
 
-IMPORTANT: After sharing your token, regenerate it at:
-  tempestwx.com -> Settings -> Data Authorizations
-  Then update TEMPEST_TOKEN below with the new value.
+Tempest token (for lightning/wind alerts): set the TEMPEST_TOKEN environment
+variable -- never put a real token in this file. Without a token the storm
+monitor runs on NWS alerts alone. (Get one at tempestwx.com -> Settings ->
+Data Authorizations.)
+
+Security (2026-10-20): the server answers only the dashboard page and its
+/api/ endpoints. It used to serve every file in this folder, including this
+source file and anything stored beside it.
 """
 
 import http.server
@@ -26,7 +31,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DXMON_ADXO_URL = "http://192.168.6.29:8083/api/adxo"
 
 # ── Storm Alert Configuration ─────────────────────────────
-TEMPEST_TOKEN      = "insert-your-tempest-token-here"
+TEMPEST_TOKEN      = os.environ.get("TEMPEST_TOKEN", "").strip()   # never hardcode a real token
 TEMPEST_STATION_ID = "159572"
 NWS_ZONE           = "GAC073"   # Columbia County GA
 CALLSIGN           = "N4MI"
@@ -56,6 +61,8 @@ alert_lock = threading.Lock()
 
 # ── Tempest API polling ───────────────────────────────────
 def fetch_tempest():
+    if not TEMPEST_TOKEN:
+        raise RuntimeError("TEMPEST_TOKEN not set -- Tempest skipped, NWS only")
     url = (f"https://swd.weatherflow.com/swd/rest/better_forecast"
            f"?station_id={TEMPEST_STATION_ID}&token={TEMPEST_TOKEN}")
     req = urllib.request.Request(url, headers={"User-Agent": "N4MI-Dashboard/1.0"})
@@ -184,6 +191,14 @@ def alert_monitor_loop():
 
 
 # ── HTTP request handler ──────────────────────────────────
+# Files this server will hand out. Everything else gets 404 -- including
+# dashboard_server.py itself, the .pid file and anything else in the folder.
+SERVED_FILES = {
+    "/": "N4MI_PropagationDashboard.html",
+    "/N4MI_PropagationDashboard.html": "N4MI_PropagationDashboard.html",
+}
+
+
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
@@ -263,8 +278,25 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
             return
 
-        # Serve static files
-        super().do_GET()
+        # Serve only the dashboard page (see SERVED_FILES)
+        name = SERVED_FILES.get(self.path.split("?", 1)[0])
+        if not name:
+            self.send_error(404)
+            return
+        try:
+            with open(os.path.join(SCRIPT_DIR, name), "rb") as f:
+                body = f.read()
+        except OSError:
+            self.send_error(404)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_HEAD(self):
+        self.send_error(405)
 
     def log_message(self, format, *args):
         if "/api/" in str(args[0]):
@@ -291,8 +323,7 @@ if __name__ == "__main__":
     print(f"  Storm API:     http://localhost:{PORT}/api/storm")
     print(f"  PID file:      {pid_file}")
     print()
-    print(f"  REMINDER: Regenerate your Tempest token after this session!")
-    print(f"  tempestwx.com -> Settings -> Data Authorizations")
+    print(f"  Tempest token: {'set' if TEMPEST_TOKEN else 'NOT SET (NWS alerts only) -- set the TEMPEST_TOKEN environment variable'}")
     print()
     print(f"  Press Ctrl+C to stop.")
     print()

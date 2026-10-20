@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300;0,7..72,500;0,7..72,700;1,7..72,400&family=JetBrains+Mono:wght@400;500&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <style>
 :root {
   --bg:        #f5f2ee;
@@ -1423,7 +1424,7 @@ function cardHtml(m) {
       </div>
       <div class="card-body">
         <div class="card-title">${esc(m.title)}${ftsBadge}</div>
-        <div class="card-meta">${meta}</div>
+        <div class="card-meta">${esc(meta)}</div>
         ${m.description ? `<div class="card-desc">${esc(m.description)}</div>` : ''}
         ${tags ? `<div class="card-tags">${tags}</div>` : ''}
       </div>
@@ -1443,7 +1444,7 @@ function listRowHtml(m) {
       <div class="list-thumb">${thumb}</div>
       <div class="list-info">
         <div class="list-title">${m.favorite?'⭐ ':''}${esc(m.title)}${ftsBadge}</div>
-        ${meta ? `<div class="list-subtitle">${meta}</div>` : ''}
+        ${meta ? `<div class="list-subtitle">${esc(meta)}</div>` : ''}
         ${m.description ? `<div class="list-desc">${esc(m.description)}</div>` : ''}
         ${tags ? `<div class="list-tags">${tags}</div>` : ''}
         <div class="list-subtitle" style="margin-top:3px">📁 ${esc(m.file_path)}</div>
@@ -1502,7 +1503,12 @@ async function openDetail(id) {
       const text = await pr.text();
       if (m.file_type === 'md') {
         previewLabel.textContent = 'MARKDOWN PREVIEW';
-        previewContent.innerHTML = `<div class="md-body">${marked.parse(text)}</div>`;
+        // Security (2026-10-20): marked does not sanitize; DOMPurify strips
+        // scripts, event handlers and javascript: links. Without DOMPurify
+        // (e.g. offline), fall back to plain escaped text.
+        previewContent.innerHTML = (window.DOMPurify
+          ? `<div class="md-body">${DOMPurify.sanitize(marked.parse(text))}</div>`
+          : `<div class="txt-body">${esc(text)}</div>`);
       } else {
         previewLabel.textContent = 'TEXT PREVIEW';
         previewContent.innerHTML = `<div class="txt-body">${esc(text)}</div>`;
@@ -1574,7 +1580,7 @@ async function loadTags() {
   const tags = await r.json();
   const cloud = document.getElementById('tagCloud');
   cloud.innerHTML = tags.map(t =>
-    `<span class="tag-pill" data-tag="${esc(t)}" onclick="setTagFilter('${esc(t)}')">${esc(t)}</span>`
+    `<span class="tag-pill" data-tag="${esc(t)}" onclick="setTagFilter(this.dataset.tag)">${esc(t)}</span>`
   ).join('');
 }
 
@@ -1583,7 +1589,7 @@ async function loadCategories() {
   const cats = await r.json();
   const list = document.getElementById('categoryList');
   list.innerHTML = cats.map(c =>
-    `<button class="sidebar-link" onclick="setCatFilter('${esc(c)}')" style="font-size:13px">${esc(c)}</button>`
+    `<button class="sidebar-link" data-cat="${esc(c)}" onclick="setCatFilter(this.dataset.cat)" style="font-size:13px">${esc(c)}</button>`
   ).join('');
   const sel = document.getElementById('catFilter');
   const cur = sel.value;
@@ -1629,6 +1635,7 @@ function renderRemoteGrid() {
     document.getElementById('resultCount').textContent = '0 items';
     return;
   }
+  _remoteRefs = [];
   let allCards = [];
   let total = 0;
   for (const machine of remoteData) {
@@ -1649,18 +1656,28 @@ function renderRemoteGrid() {
   container.innerHTML = allCards.join('');
 }
 
+// Security (2026-10-20): remote manuals are referenced by index into this
+// list instead of embedding their JSON inside an onclick attribute (which
+// both broke the click and allowed injection from manifest data).
+let _remoteRefs = [];
+function remoteRef(m, computer) { _remoteRefs.push({m, computer}); return _remoteRefs.length - 1; }
+function openRemoteIdx(i) {
+  const r = _remoteRefs[i];
+  if (r) openRemoteDetail(JSON.stringify(r.m), r.computer);
+}
+
 function remoteCardHtml(m, computer) {
   const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,3).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
   const meta = [m.make, m.model, m.page_count ? m.page_count+' pp' : null].filter(Boolean).join(' · ');
   return `
-    <div class="card remote" onclick="openRemoteDetail(${JSON.stringify(JSON.stringify(m)).slice(1,-1)}, '${esc(computer)}')">
+    <div class="card remote" onclick="openRemoteIdx(${remoteRef(m, computer)})">
       <div class="card-thumb">
         <div class="card-thumb-placeholder"><div class="type-icon" style="font-size:30px">${m.file_type==='pdf'?'📄':'🖼'}</div><div class="type-label" style="font-size:8px">REMOTE</div></div>
         <span class="card-type-badge remote">${esc(computer.substring(0,8))}</span>
       </div>
       <div class="card-body">
         <div class="card-title">${esc(m.title)}</div>
-        <div class="card-meta">${meta}</div>
+        <div class="card-meta">${esc(meta)}</div>
         ${tags ? `<div class="card-tags">${tags}</div>` : ''}
       </div>
     </div>`;
@@ -1670,11 +1687,11 @@ function remoteListRowHtml(m, computer) {
   const tags = (m.tags||'').split(',').filter(t=>t.trim()).slice(0,4).map(t=>`<span class="card-tag">${esc(t.trim())}</span>`).join('');
   const meta = [m.make, m.model].filter(Boolean).join(' · ');
   return `
-    <div class="list-row remote" onclick="openRemoteDetail(${JSON.stringify(JSON.stringify(m)).slice(1,-1)}, '${esc(computer)}')">
+    <div class="list-row remote" onclick="openRemoteIdx(${remoteRef(m, computer)})">
       <div class="list-thumb"><span style="font-size:28px;opacity:.3">${m.file_type==='pdf'?'📄':'🖼'}</span></div>
       <div class="list-info">
         <div class="list-title">📡 ${esc(m.title)}</div>
-        ${meta ? `<div class="list-subtitle">${meta}</div>` : ''}
+        ${meta ? `<div class="list-subtitle">${esc(meta)}</div>` : ''}
         <div class="list-subtitle">On: ${esc(computer)}</div>
         ${tags ? `<div class="list-tags">${tags}</div>` : ''}
       </div>
