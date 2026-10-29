@@ -49,7 +49,7 @@ function Close-App($processName, $friendlyName) {
 }
 
 # ── Step 1: Confirm shutdown ──────────────────────────────
-$confirm = Show-Prompt "Close all ham radio apps?`n`nThis will close:`n  - JTAlert`n  - WSJT-X`n  - MRP40`n  - ACLog`n  - PSTRotatorAz`n  - Ham Radio Dashboard (Chrome)`n`nAre you ready to shut down?" "Ham Radio - Close All Apps"
+$confirm = Show-Prompt "Close all ham radio apps?`n`nThis will close:`n  - JTAlert`n  - WSJT-X`n  - MRP40`n  - ACLog`n  - PSTRotatorAz`n  - IC-7610 network control helper`n  - Ham Radio Dashboard (Chrome)`n`nAre you ready to shut down?" "Ham Radio - Close All Apps"
 
 if ($confirm -ne "Yes") {
     Write-Host "Shutdown cancelled." -ForegroundColor Cyan
@@ -84,6 +84,14 @@ Start-Sleep -Seconds 1
 
 # PSTRotatorAz
 Close-App "PstRotatorAz" "PSTRotatorAz"
+
+# IC-7610 network control helper (Stream Deck Radio buttons) - releases the radio's LAN session
+$rigScript = "C:\Ham Scripts\rigcontrol\rig.ps1"
+if (Test-Path $rigScript) {
+    Write-Host "Stopping IC-7610 network control helper..." -ForegroundColor Yellow
+    & $rigScript stop | Out-Null
+    Write-Host "  Radio control helper stopped" -ForegroundColor Green
+}
 
 # ── Step 4: Close dashboard Chrome tab ───────────────────
 Write-Host "Closing Ham Radio Dashboard..." -ForegroundColor Yellow

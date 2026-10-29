@@ -21,6 +21,7 @@ with assistance from [Claude AI](https://claude.ai/).
 - **HamShackFeed Pro** — server-powered version of HamShackFeed with SQLite persistence, direct RSS fetching (no API key needed), background refresh, and cross-device access
 - **ManualShelf** — locally-hosted PDF and image manual catalog; browse, search, tag, and open radio manuals and settings screenshots with auto-generated thumbnails; cross-computer visibility via NAS exchange folder
 - **PropMon** — always-on Docker service on the NAS that fetches HF propagation and tower/weather alert data, applies band-condition rating, and serves it as JSON — a backend for other tools, including the [N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments) ESP32 hardware project. **Moved 2026-10-19 to [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon)**
+- **IC-7610 rig control** — band, mode, filter, ±100 kHz, split (up 5 / up 1), preamp and NR/NB buttons that drive the IC-7610 over its LAN port, so the logger and WSJT-X keep the USB port; see [`rigcontrol/`](rigcontrol/) (added 2026-10)
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 > **Want the dashboard or HamShackFeed Pro always on?** An always-on server edition of both apps, run as Docker containers and deployed with Portainer, lives in [**n4mi-shack-server**](https://github.com/N4MI73/n4mi-shack-server). This repo remains the Windows / local-computer edition that the blog series describes, and both versions keep working.
@@ -104,6 +105,10 @@ streamdeck-hamradio/
 │       └── index.html                  # Frontend
 ├── propmon/
 │   └── README.md                       # Pointer: PropMon moved to n4mi-shack-server (2026-10-19)
+├── rigcontrol/
+│   ├── README.md                       # IC-7610 LAN control: setup, buttons, lessons learned
+│   ├── rig.ps1                         # All rig-control actions + helper start/stop
+│   └── icons/                          # 26 button icons + make_icons.py
 └── icons/
     ├── FT8.png
     ├── SSB.png
@@ -180,7 +185,11 @@ See the [HamShackFeed Pro Setup](#hamshackfeed-pro-setup) section below.
 
 See the [ManualShelf Setup](#manualshelf-setup) section below.
 
-### 9. Set up PropMon (optional)
+### 9. Set up IC-7610 rig control (optional)
+
+Band/mode/filter/split buttons over the radio's LAN port — see [`rigcontrol/README.md`](rigcontrol/README.md).
+
+### 10. Set up PropMon (optional)
 
 PropMon moved to [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon) on 2026-10-19 — it's a Docker/NAS deployment, not a local script. Follow the setup in its README there.
 
@@ -390,6 +399,7 @@ repository's `propmon/` folder now holds only a pointer.
 | `RotatorStop.ps1` | Immediately stops antenna rotation | none |
 | `hamshackfeedpro/server.py` | Starts HamShackFeed Pro on port 8074 | none |
 | `manualshelf/server.py` | Starts ManualShelf catalog on port 8075 | none |
+| `rigcontrol/rig.ps1` | IC-7610 band/mode/filter/split/preamp/NR/NB over the LAN | `band 20`, `mode CW`, `split SSB`, `stop` … (see its README) |
 
 ---
 
@@ -418,6 +428,7 @@ These are approximate great-circle headings. Operators in other grid squares sho
 - **Launch delays** — adjust `$shortDelay` and `$jtalertDelay` in `HamRadioLauncher.ps1` if apps need more time to load on your PC.
 - **HamShackFeed API key** — set `RSS2JSON_KEY` in `HamShackFeed.html` (or use HamShackFeed Pro instead).
 - **HamShackFeed Pro refresh interval** — change `REFRESH_INTERVAL_MINUTES` near the top of `server.py`.
+- **IC-7610 rig control** — `$RadioIP`, band edges, filters and split offsets in `rigcontrol/rig.ps1`; see [`rigcontrol/README.md`](rigcontrol/README.md#adapting-it).
 - **PropMon station coordinates/zone** — now in [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon) (`propmon_server.py` there).
 
 ---
@@ -444,6 +455,7 @@ Full writeups with setup instructions, screenshots, and explanations at **[n4mi.
 6. HamShackFeedPro — Upgraded ham radio content aggregator
 7. ManualShelf — A locally-hosted PDF and document catalog
 8. PropMon – a Desktop Propagation Monitor
+9. IC-7610 Rig Control from the Stream Deck
 
 ---
 

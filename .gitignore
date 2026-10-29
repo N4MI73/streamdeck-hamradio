@@ -27,3 +27,10 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# rigcontrol — runtime files (do not commit)
+rigcontrol/rig_cred.xml
+rigcontrol/rig.log
+rigcontrol/rig.log.old
+rigcontrol/icons/out/
+rigcontrol/icons/_sheet.png
