@@ -32,5 +32,8 @@ desktop.ini
 rigcontrol/rig_cred.xml
 rigcontrol/rig.log
 rigcontrol/rig.log.old
+rigcontrol/shacklink.log
+rigcontrol/shacklink.log.old
+rigcontrol/rig.ps1.bak*
 rigcontrol/icons/out/
 rigcontrol/icons/_sheet.png

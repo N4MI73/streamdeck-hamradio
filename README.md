@@ -21,7 +21,7 @@ with assistance from [Claude AI](https://claude.ai/).
 - **HamShackFeed Pro** — server-powered version of HamShackFeed with SQLite persistence, direct RSS fetching (no API key needed), background refresh, and cross-device access
 - **ManualShelf** — locally-hosted PDF and image manual catalog; browse, search, tag, and open radio manuals and settings screenshots with auto-generated thumbnails; cross-computer visibility via NAS exchange folder
 - **PropMon** — always-on Docker service on the NAS that fetches HF propagation and tower/weather alert data, applies band-condition rating, and serves it as JSON — a backend for other tools, including the [N4MI Desktop Instrument Series](https://github.com/N4MI73/n4mi-desktop-instruments) ESP32 hardware project. **Moved 2026-10-19 to [n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon)**
-- **IC-7610 rig control** — band, mode, filter, ±100 kHz, split (up 5 / up 1), preamp and NR/NB buttons that drive the IC-7610 over its LAN port, so the logger and WSJT-X keep the USB port; see [`rigcontrol/`](rigcontrol/) (added 2026-10)
+- **IC-7610 rig control** — band, mode, filter, ±100 kHz, split (up 5 / up 1), preamp and NR/NB buttons that drive the IC-7610 over its LAN port, so the logger and WSJT-X keep the USB port; see [`rigcontrol/`](rigcontrol/) (added 2026-10; optional Tune/Rotate web links added 2026-11)
 - **Custom icons** — full set of 144×144 PNG icons generated with Python/Pillow, consistent design language across all buttons
 
 > **Want the dashboard or HamShackFeed Pro always on?** An always-on server edition of both apps, run as Docker containers and deployed with Portainer, lives in [**n4mi-shack-server**](https://github.com/N4MI73/n4mi-shack-server). This repo remains the Windows / local-computer edition that the blog series describes, and both versions keep working.
@@ -108,6 +108,7 @@ streamdeck-hamradio/
 ├── rigcontrol/
 │   ├── README.md                       # IC-7610 LAN control: setup, buttons, lessons learned
 │   ├── rig.ps1                         # All rig-control actions + helper start/stop
+│   ├── shacklink.ps1                   # Optional n4mi-shack: Tune/Rotate link handler
 │   └── icons/                          # 26 button icons + make_icons.py
 └── icons/
     ├── FT8.png
@@ -400,6 +401,7 @@ repository's `propmon/` folder now holds only a pointer.
 | `hamshackfeedpro/server.py` | Starts HamShackFeed Pro on port 8074 | none |
 | `manualshelf/server.py` | Starts ManualShelf catalog on port 8075 | none |
 | `rigcontrol/rig.ps1` | IC-7610 band/mode/filter/split/preamp/NR/NB over the LAN | `band 20`, `mode CW`, `split SSB`, `stop` … (see its README) |
+| `rigcontrol/shacklink.ps1` | Handles `n4mi-shack:` Tune/Rotate links from a web page | `-Install`, `-Status`, `-Uninstall`, or a link (see rigcontrol README §7) |
 
 ---
 
