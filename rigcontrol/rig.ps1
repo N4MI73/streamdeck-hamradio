@@ -507,3 +507,6 @@ try {
 } finally {
     $mutex.ReleaseMutex(); $mutex.Dispose()
 }
+# Explicit success code: otherwise a caller (shacklink.ps1) could see a stale code
+# left by a native command, e.g. taskkill during a helper restart.
+exit 0
