@@ -13,6 +13,9 @@
     rig.ps1 mode DATA      USB-D1 FIL1
     rig.ps1 filter         step FIL1 -> FIL2 -> FIL3 -> FIL1 (keeps mode/data)
     rig.ps1 up | down      +/-100 kHz, stops at the US band edge (keeps mode)
+    rig.ps1 tune 14025000 CW   go to a frequency (whole Hz) in CW (FIL3) or SSB (LSB/USB, FIL2);
+                           split OFF, MAIN selected, departing band's register saved on a
+                           band change (used by the DXMon Live Tune link via shacklink.ps1)
     rig.ps1 split SSB      split ON, transmit 5 kHz above the MAIN frequency (SUB = TX)
     rig.ps1 split CW       split ON, transmit 1 kHz above
     rig.ps1 split OFF      split OFF
@@ -36,7 +39,8 @@
 #>
 param(
     [Parameter(Position = 0)][string]$Action = 'status',
-    [Parameter(Position = 1)][string]$Arg = ''
+    [Parameter(Position = 1)][string]$Arg = '',
+    [Parameter(Position = 2)][string]$Arg2 = ''
 )
 
 # ---------------- configuration ----------------
@@ -249,6 +253,59 @@ function Confirm-Helper {
 }
 
 # ---------------- actions ----------------
+# Save the current spot ($f Hz, mode/filter $m) into band $cur's register 1
+# (what the front-panel band keys do; a CI-V band change does not).
+function Save-DepartingBand([string]$cur, [long]$f, $m) {
+    $code = $Bands[$cur].Code
+    $old = Get-BandStack $code
+    if ($old) {
+        $data = 0
+        if ($DataCapable -contains $m.Mode) { $d = Get-DataMode; if ($d) { $data = $d.Data } }
+        $flag = (($data -band 0x0F) -shl 4) -bor ($old[11] -band 0x0F)   # keep tone type
+        $frame = @(0x1A, 0x01, $code, 0x01) + (ConvertTo-Bcd $f) +
+                 @($m.Mode, $m.Filter, $flag) + $old[12..17]               # keep tone freqs
+        if (Test-Ack (Invoke-Civ $frame)) { Write-RigLog "saved $cur m register: $f Hz" }
+        else { Write-RigLog "WARNING: could not save $cur m register (continuing)" }
+    }
+}
+
+# Check tune arguments before the helper is started, so a bad request never touches the radio.
+function Test-TuneArgs([string]$hzText, [string]$which) {
+    if ($hzText -notmatch '^\d{1,9}$') { Fail "tune: frequency must be whole Hz, digits only (got '$hzText')" }
+    [long]$hz = $hzText
+    $which = $which.ToUpper()
+    if ($which -ne 'CW' -and $which -ne 'SSB') { Fail "tune: mode must be CW or SSB (got '$which')" }
+    if (-not (Find-HamBand $hz)) { Fail ("tune: {0:N0} Hz is not inside a US amateur band" -f $hz) }
+    return @{ Hz = $hz; Mode = $which }
+}
+
+function Invoke-Tune([long]$hz, [string]$which) {
+    $band = Find-HamBand $hz
+    Clear-SplitIfOn "tune"
+    if (-not (Select-Main)) { Fail 'could not select MAIN' }
+    $f = Get-Freq; $m = Get-Mode
+    if ($null -eq $f -or $null -eq $m) { Fail 'could not read radio state' }
+    $cur = Find-Band $f
+    if ($cur -and $cur -ne $band) { Save-DepartingBand $cur $f $m }
+
+    if (-not (Set-Freq $hz)) { Fail "radio rejected frequency $hz" }
+    if ($which -eq 'CW') {
+        $mode = 3; $fil = 3
+        $ok = Set-ModeFirm 3 3
+    } else {
+        # Same rule as the SSB button: LSB below 10 MHz, USB from 10 MHz up
+        $mode = 1; if ($hz -lt 10000000) { $mode = 0 }
+        $fil = 2
+        $ok = (Set-ModeFirm $mode 2) -and (Set-DataMode 0 0)
+    }
+    if (-not $ok) { Fail "radio did not confirm mode $which" }
+    # A mode change can move the display (e.g. SSB/CW Synchronous Tuning ON): put it back on the spot
+    $now = Get-Freq
+    if ($now -ne $hz) { $null = Set-Freq $hz; $now = Get-Freq }
+    if ($now -ne $hz) { Fail ("tuned, but radio reads {0:N0} Hz (expected {1:N0})" -f $now, $hz) }
+    Write-RigLog ("tune -> {0:N0} Hz {1} FIL{2} ({3} m)" -f $hz, $ModeNames[$mode], $fil, $band)
+}
+
 function Invoke-Band([string]$name) {
     $name = $name -replace '[mM]$', ''
     if (-not $Bands.Contains($name)) { Fail "unknown band '$name'" }
@@ -261,19 +318,7 @@ function Invoke-Band([string]$name) {
     if ($cur -eq $name) { Write-RigLog "already on $name m"; return }
 
     # 1. Save where we are into the departing band's register 1 (front-panel behavior)
-    if ($cur) {
-        $code = $Bands[$cur].Code
-        $old = Get-BandStack $code
-        if ($old) {
-            $data = 0
-            if ($DataCapable -contains $m.Mode) { $d = Get-DataMode; if ($d) { $data = $d.Data } }
-            $flag = (($data -band 0x0F) -shl 4) -bor ($old[11] -band 0x0F)   # keep tone type
-            $frame = @(0x1A, 0x01, $code, 0x01) + (ConvertTo-Bcd $f) +
-                     @($m.Mode, $m.Filter, $flag) + $old[12..17]               # keep tone freqs
-            if (Test-Ack (Invoke-Civ $frame)) { Write-RigLog "saved $cur m register: $f Hz" }
-            else { Write-RigLog "WARNING: could not save $cur m register (continuing)" }
-        }
-    }
+    if ($cur) { Save-DepartingBand $cur $f $m }
 
     # 2. Recall the target band's register 1
     $r = Get-BandStack $target.Code
@@ -447,6 +492,7 @@ try {
         'status' { Show-Status }
         'start'  { Confirm-Helper; Show-Status }
         'band'   { Confirm-Helper; Invoke-Band $Arg }
+        'tune'   { $t = Test-TuneArgs $Arg $Arg2; Confirm-Helper; Invoke-Tune $t.Hz $t.Mode }
         'mode'   { Confirm-Helper; Invoke-ModeButton $Arg }
         'filter' { Confirm-Helper; Invoke-FilterStep }
         'up'     { Confirm-Helper; Invoke-Step $StepHz }
@@ -461,3 +507,6 @@ try {
 } finally {
     $mutex.ReleaseMutex(); $mutex.Dispose()
 }
+# Explicit success code: otherwise a caller (shacklink.ps1) could see a stale code
+# left by a native command, e.g. taskkill during a helper restart.
+exit 0

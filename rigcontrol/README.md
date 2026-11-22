@@ -47,7 +47,9 @@ Stream Deck button
 | PREAMP | `preamp` | OFF → P.AMP1 → P.AMP2 → OFF |
 | NR / NB | `nr` / `nb` | Toggle noise reduction / noise blanker |
 | STOP | `stop` | Stops the helper and releases the radio's LAN session |
+| — | `tune 14025000 CW` | Goes to a frequency (whole Hz) in `CW` (FIL3) or `SSB` (LSB below 10 MHz / USB above, FIL2): split OFF, MAIN selected, and on a band change the band you're leaving is saved first. Used by the web links below |
 | — | `status` | Shows the helper state and what the radio is on (for testing) |
+| — | `start` | Starts the helper and shows the radio state, changing nothing — a warm-up |
 | — | `power OFF` | Radio off (not on a button; remote power-on proved unreliable and was left out) |
 
 **Split safety:** band, mode and ±100k buttons turn split OFF first, so your transmit
@@ -132,6 +134,47 @@ Press STOP, or add one line to your shutdown script (as `scripts/CloseHamRadio.p
 & 'C:\Ham Scripts\rigcontrol\rig.ps1' stop
 ```
 
+### 7. Optional: Tune and Rotate links from a web page
+
+`shacklink.ps1` lets a web page on your LAN tune the radio and turn the beam with plain
+links. At N4MI the page is DXMon Live (a DX spot monitor served from the NAS); its popup
+has separate **Tune** and **Rotate** buttons:
+
+```
+n4mi-shack:tune?freq=14025000&mode=CW      ->  rig.ps1 tune 14025000 CW
+n4mi-shack:rotate?az=106                   ->  ..\RotatorAzimuth.ps1 -az 106  (PSTRotatorAz)
+```
+
+- **Contract:** `freq` whole Hz (digits only), `mode` exactly `CW` or `SSB`, `az` whole
+  degrees 0–359. Anything else is logged as REJECTED and ignored; `rig.ps1` also refuses
+  frequencies outside a US band. Nothing here can transmit. No result goes back to the page.
+- **Why links, not a web service:** no extra always-on process, and the links do nothing on
+  any device without the handler (phones, tablets, other PCs).
+- **Register** the `n4mi-shack:` scheme for your Windows user (no admin rights):
+  ```powershell
+  powershell.exe -ExecutionPolicy Bypass -File 'C:\Ham Scripts\rigcontrol\shacklink.ps1' -Install
+  ```
+  `-Status` shows the registration, `-Uninstall` removes it. It launches through
+  `conhost.exe --headless`, so no window flashes on each click.
+- **Chrome asks every time** ("Open Windows PowerShell?", Open/Cancel, no "always allow")
+  when the page is plain `http://`. To allow the links from that one page only, set Chrome's
+  `AutoLaunchProtocolsFromOrigins` policy from an **admin** PowerShell window (one line;
+  `HKCU\Software\Policies` is admin-only, so HKLM is used), then fully exit Chrome and click
+  **Reload policies** on `chrome://policy`:
+  ```powershell
+  New-Item 'HKLM:\SOFTWARE\Policies\Google\Chrome' -Force | Out-Null; New-ItemProperty 'HKLM:\SOFTWARE\Policies\Google\Chrome' -Name 'AutoLaunchProtocolsFromOrigins' -PropertyType String -Force -Value '[{"protocol":"n4mi-shack","allowed_origins":["http://192.168.6.29:8083"]}]' | Out-Null
+  ```
+  Replace the address with your page's origin. Chrome then shows "Managed by your
+  organization" — cosmetic. If the page ever moves (host, port, http→https), update it.
+- **Test** with a typed link before using the page:
+  `powershell.exe -ExecutionPolicy Bypass -File 'C:\Ham Scripts\rigcontrol\shacklink.ps1' "n4mi-shack:tune?freq=14025000&mode=CW"`
+- **Log:** `shacklink.log` next to the script; rig actions also log to `rig.log`.
+- **Warm-up tip:** the first action after a reboot or STOP takes 5–10 s while the helper logs
+  in. Press any band button (or run `rig.ps1 start`) at the start of a session and the web
+  links respond in about a second.
+- **Files saved from a browser** may be blocked ("not digitally signed") when run from a
+  prompt: `Unblock-File` them once.
+
 ## Adapting it
 
 - **Radio address and user:** `$RadioIP` at the top of `rig.ps1`; user and password via `setup`
@@ -165,6 +208,8 @@ Press STOP, or add one line to your shutdown script (as `scripts/CloseHamRadio.p
 | File | Purpose |
 |---|---|
 | `rig.ps1` | Everything: actions, helper start/stop, logging |
+| `shacklink.ps1` | Optional handler for `n4mi-shack:` Tune/Rotate links (section 7) |
+| `shacklink.log` | *Created at run time by the link handler* |
 | `icons/*.png`, `icons/make_icons.py` | Button icons and the script that draws them |
 | `rig_cred.xml` | *Created by setup — encrypted login; never commit* |
 | `rig.log` | *Created at run time* |
